@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Prayer Times</title>
+  <!-- Enable Tailwind dark mode via class -->
+  <script>
+    window.tailwind = window.tailwind || {};
+    window.tailwind.config = { darkMode: 'class' };
+  </script>
+  <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+</head>
+<body class="bg-gray-100 text-gray-900 dark:bg-gray-900 dark:text-gray-100 flex flex-col min-h-screen">
+  <!-- Header -->
+  <header class="bg-white dark:bg-gray-800 shadow-sm">
+    <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+      <h1 class="text-lg font-semibold">Prayer Times</h1>
+      <div class="flex space-x-4">
+        <button type="button" id="theme-toggle" class="text-xl">🌞</button>
+        <button type="button" id="open-adv" class="text-xl">⚙️</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-grow container mx-auto px-4 py-8 space-y-8">
+    <!-- Results table (always visible) -->
+    <section id="results" class="mb-8">
+      <h2 id="method-name" class="text-center text-lg font-medium mb-4"></h2>
+      <div class="overflow-x-auto max-w-md mx-auto">
+        <table class="min-w-full bg-white dark:bg-gray-800 shadow rounded-lg">
+          <tbody id="prayer-body" class="divide-y">
+            <tr><td class="px-4 py-2 font-medium">Fajr</td><td id="time-fajr" class="px-4 py-2 text-right">--:--</td></tr>
+            <tr><td class="px-4 py-2 font-medium">Sunrise</td><td id="time-sunrise" class="px-4 py-2 text-right">--:--</td></tr>
+            <tr><td class="px-4 py-2 font-medium">Ẓuhr</td><td id="time-zuhr" class="px-4 py-2 text-right">--:--</td></tr>
+            <tr><td class="px-4 py-2 font-medium">ʿAṣr</td><td id="time-asr" class="px-4 py-2 text-right">--:--</td></tr>
+            <tr><td class="px-4 py-2 font-medium">Sunset</td><td id="time-sunset" class="px-4 py-2 text-right">--:--</td></tr>
+            <tr><td class="px-4 py-2 font-medium">Maghrib</td><td id="time-maghrib" class="px-4 py-2 text-right">--:--</td></tr>
+            <tr><td class="px-4 py-2 font-medium">ʿIshāʾ</td><td id="time-isha" class="px-4 py-2 text-right">--:--</td></tr>
+            <tr><td class="px-4 py-2 font-medium">Midnight</td><td id="time-midnight" class="px-4 py-2 text-right">--:--</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Location + Map -->
+    <section class="max-w-md mx-auto space-y-4">
+      <form id="manual-form" class="space-y-2">
+        <input type="text" id="city" placeholder="City / Address" autocomplete="off"
+               class="w-full border rounded px-3 py-2 dark:bg-gray-700 dark:border-gray-600"/>
+        <ul id="autocomplete-suggestions"
+            class="border bg-white dark:bg-gray-700 dark:border-gray-600 rounded hidden max-h-40 overflow-y-auto"></ul>
+        <div class="flex space-x-4">
+          <input type="number" id="lat" min="-90" max="90" step="0.000001"
+                 placeholder="Latitude"
+                 class="flex-1 border rounded px-3 py-2 dark:bg-gray-700 dark:border-gray-600"/>
+          <input type="number" id="lon" min="-180" max="180" step="0.000001"
+                 placeholder="Longitude"
+                 class="flex-1 border rounded px-3 py-2 dark:bg-gray-700 dark:border-gray-600"/>
+        </div>
+        <button type="submit" class="bg-emerald-600 text-white py-2 w-full rounded-lg">
+          Use Manual Location
+        </button>
+      </form>
+      <button type="button" id="use-gps" class="w-full bg-blue-500 text-white py-2 rounded-lg">
+        Use Precise GPS
+      </button>
+      <div id="map-container" class="w-full h-64 bg-gray-300 dark:bg-gray-700 rounded-lg overflow-hidden">
+        <iframe id="map" class="w-full h-full" src="" frameborder="0" scrolling="no" loading="lazy"></iframe>
+      </div>
+    </section>
+
+    <!-- Spinner -->
+    <div id="spinner" class="fixed inset-0 flex items-center justify-center bg-white/60 dark:bg-black/60 hidden">
+      <img src="/static/img/spinner.svg" class="w-16 h-16 animate-spin" alt="Loading…"/>
+    </div>
+  </main>
+
+  <!-- Advanced Settings Modal -->
+  <div id="adv-modal" class="fixed inset-0 flex items-center justify-center bg-black/50 hidden">
+    <div class="bg-white dark:bg-gray-800 rounded-lg max-w-3xl w-full p-6 relative">
+      <button type="button" id="close-adv" class="absolute top-3 right-3 text-gray-500">✖️</button>
+      <h3 class="text-lg font-medium mb-4">Advanced Settings</h3>
+      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <select id="method" class="border rounded px-3 py-2 dark:bg-gray-700 dark:border-gray-600">
+            <option value="JAFARI">Shia Ithna Ashari, Leva Institute (Jafari)</option>
+            <option value="TEHRAN">University of Tehran (Tehran)</option>
+            <option value="ISNA">Islamic Society of North America (ISNA)</option>
+          <option value="MWL">Muslim World League (MWL)</option>
+          <option value="MAKKAH">Umm al-Qura University (Makkah)</option>
+          <option value="EGYPT">Egyptian General Authority (Egypt)</option>
+          <option value="KARACHI">University of Islamic Sciences (Karachi)</option>
+          <option value="CUSTOM">Custom Angles</option>
+        </select>
+        <select id="asr" class="border rounded px-3 py-2 dark:bg-gray-700 dark:border-gray-600">
+          <option value="standard">ʿAṣr: Standard</option>
+          <option value="hanafi">ʿAṣr: Ḥanafī</option>
+        </select>
+        <select id="midnight" class="border rounded px-3 py-2 dark:bg-gray-700 dark:border-gray-600">
+          <option value="standard">Midnight: Sunset–Sunrise</option>
+          <option value="jafari">Midnight: Sunset–Fajr (Jaʿfarī)</option>
+        </select>
+        <input id="fajr_angle" type="number" min="0" max="90" step="0.1"
+               placeholder="Fajr angle°"
+               class="border rounded px-3 py-2 hidden dark:bg-gray-700 dark:border-gray-600"/>
+        <input id="maghrib_angle" type="number" min="0" max="90" step="0.1"
+               placeholder="Maghrib angle°"
+               class="border rounded px-3 py-2 hidden dark:bg-gray-700 dark:border-gray-600"/>
+        <input id="isha_angle" type="number" min="0" max="90" step="0.1"
+               placeholder="Isha angle°"
+               class="border rounded px-3 py-2 hidden dark:bg-gray-700 dark:border-gray-600"/>
+      </div>
+      <div class="mt-6 text-right">
+        <button type="button" id="compute-btn" class="bg-blue-600 text-white py-2 px-6 rounded-lg">
+          Compute
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <footer class="text-center text-xs py-4 text-gray-500 dark:text-gray-400">© 2025</footer>
+  <script src="/static/js/main.js" type="module"></script>
+</body>
+</html>
