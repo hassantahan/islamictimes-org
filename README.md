@@ -97,4 +97,4 @@ Contributions welcome! Please open issues or pull requests for bug fixes and enh
 
 ## License
 
-This project is licensed under the MIT License. See `LICENSE` for details.
+This project is licensed under the CC-BY-NC License. See `LICENSE` for details.
