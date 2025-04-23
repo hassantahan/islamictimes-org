@@ -1,16 +1,17 @@
 # Islamic Times Web App
 
-A minimal, sleek, and responsive Flask application that displays local Islamic prayer times based on user-provided coordinates or location search. Utilizes `islamic_times` for computation and OpenStreetMap for geocoding.
+A minimal, sleek, and responsive Flask application that showcases the [`islamic_times`](https://github.com/hassantahan/islamic_times/) python library.
 
 ## Features
 
-- **Automatic IP-based location detection** with manual override via city/address search or GPS.
+- **Precise Prayer Time Calculations** with manual override via city/address search or GPS.
 - **Advanced settings** for selecting calculation methods (MWL, ISNA, Egypt, Makkah, Karachi, Tehran, Jafari) or custom angles.
-- **Handles high-latitude edge cases**, displaying “Does not exist” when prayer times cannot be computed.
-- **Dark mode by default** with toggle for light mode.
-- **Responsive design** using TailwindCSS.
-- **Map preview** via embedded OpenStreetMap iframe.
-- **Client-side validation and auto-clamping** of latitude, longitude, and angle inputs.
+
+## Future Improvements
+
+- Display islamic date
+- Display astronomical details
+- Webpage for new moon crescent visibility maps 
 
 ## Tech Stack
 
