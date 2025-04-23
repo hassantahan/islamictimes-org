@@ -1,5 +1,5 @@
 Flask>=2.0
-islamic_times>=2.0.1
+islamic_times>=2.0.3
 timezonefinder>=6.1.0
 requests>=2.25.1
 gunicorn
