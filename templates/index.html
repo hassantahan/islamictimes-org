@@ -1,21 +1,39 @@
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Prayer Times</title>
   <!-- Enable Tailwind dark mode via class -->
   <script>
-    window.tailwind = window.tailwind || {};
-    window.tailwind.config = { darkMode: 'class' };
+    tailwind.config = {
+      darkMode: 'class',
+      safelist: [
+        // background colours you use
+        'dark:bg-gray-900',
+        'dark:bg-gray-800',
+        'dark:bg-gray-700',
+        // text colours you use
+        'dark:text-gray-100',
+        'dark:text-gray-400',
+        // borders
+        'dark:border-gray-600'
+      ]
+    };
   </script>
   <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="static/img/icons/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="static/img/icons/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="static/img/icons/favicon-16x16.png">
+  <link rel="manifest" href="static/img/icons/site.webmanifest">
 </head>
 <body class="bg-gray-100 text-gray-900 dark:bg-gray-900 dark:text-gray-100 flex flex-col min-h-screen">
   <!-- Header -->
   <header class="bg-white dark:bg-gray-800 shadow-sm">
     <div class="container mx-auto px-4 py-3 flex justify-between items-center">
-      <h1 class="text-lg font-semibold">Prayer Times</h1>
+      <h1 class="text-lg font-semibold">Islamic Times</h1>
       <div class="flex space-x-4">
         <button type="button" id="theme-toggle" class="text-xl">🌞</button>
         <button type="button" id="open-adv" class="text-xl">⚙️</button>
@@ -72,7 +90,7 @@
 
     <!-- Spinner -->
     <div id="spinner" class="fixed inset-0 flex items-center justify-center bg-white/60 dark:bg-black/60 hidden">
-      <img src="/static/img/spinner.svg" class="w-16 h-16 animate-spin" alt="Loading…"/>
+      <img src="/static/img/spinner.svg"  class="w-16 h-16 animate-spin" alt="Loading…"/>
     </div>
   </main>
 
@@ -118,7 +136,7 @@
     </div>
   </div>
 
-  <footer class="text-center text-xs py-4 text-gray-500 dark:text-gray-400">© 2025</footer>
+  <footer class="text-center text-xs py-4 text-gray-500 dark:text-gray-400">COPYRIGHT © 2025 ISLAMICTIMES.ORG. ALL RIGHTS RESERVED.</footer>
   <script src="/static/js/main.js" type="module"></script>
 </body>
 </html>

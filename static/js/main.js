@@ -3,27 +3,27 @@ const $$ = s => document.querySelectorAll(s);
 const show = el => el.classList.remove("hidden");
 const hide = el => el.classList.add("hidden");
 
-// theme toggle
-const themeToggle = $("#theme-toggle");
-function updateThemeIcon() {
-  themeToggle.textContent =
-    document.documentElement.classList.contains("dark") ? "🌞" : "🌙";
-}
-// init theme
-if (localStorage.getItem("theme") === "light") {
-  document.documentElement.classList.remove("dark");
-} else {
-  document.documentElement.classList.add("dark");
-}
-updateThemeIcon();
-themeToggle.addEventListener("click", () => {
-  document.documentElement.classList.toggle("dark");
-  localStorage.setItem(
-    "theme",
-    document.documentElement.classList.contains("dark") ? "dark" : "light"
-  );
-  updateThemeIcon();
-});
+// // theme toggle
+// const themeToggle = $("#theme-toggle");
+// function updateThemeIcon() {
+//     themeToggle.textContent =
+//     document.documentElement.classList.contains("dark") ? "🌞" : "🌙";
+// }
+// // init theme
+// if (localStorage.getItem("theme") === "light") {
+//     document.documentElement.classList.remove("dark");
+// } else {
+//     document.documentElement.classList.add("dark");
+// }
+// updateThemeIcon();
+// themeToggle.addEventListener("click", () => {
+//     document.documentElement.classList.toggle("dark");
+//     localStorage.setItem(
+//         "theme",
+//         document.documentElement.classList.contains("dark") ? "dark" : "light"
+//     );
+//     updateThemeIcon();
+// });
 
 let currentCoords = null;
 let lastMethod = {};
@@ -248,21 +248,44 @@ $("#method").addEventListener("change", () => {
     }
 });
 
-
 // On load
 window.addEventListener("DOMContentLoaded", async () => {
+    const btn = document.getElementById("theme-toggle");
+    const root = document.documentElement;
+
+    // Apply theme and update icon
+    function apply(theme) {
+        if (theme === "dark") {
+            root.classList.add("dark");
+            btn.textContent = "🌞";
+        } else {
+            root.classList.remove("dark");
+            btn.textContent = "🌙";
+        }
+    }
+
+    // Choose theme: stored → else system preference
+    const stored = localStorage.getItem("theme");
+    const isDark = stored ? stored === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+    apply(isDark ? "dark" : "light");
+
+    // Toggle theme on click
+    btn.addEventListener("click", () => {
+        const next = root.classList.contains("dark") ? "light" : "dark";
+        apply(next);
+        localStorage.setItem("theme", next);
+    });
+
     // Initial IP lookup + field population
     try {
-        const ip = await fetch("https://ipapi.co/json/").then(r=>r.json());
-        currentCoords={lat:ip.latitude,lon:ip.longitude};
+        const ip = await fetch("https://ipapi.co/json/").then(r => r.json());
+        currentCoords = { lat: ip.latitude, lon: ip.longitude };
 
-        $("#lat").value=ip.latitude.toFixed(6);
-        $("#lon").value=ip.longitude.toFixed(6);
-        $("#city").value=[ip.city,ip.region,ip.country_name]
-                        .filter(Boolean)
-                        .join(", ");
+        $("#lat").value = ip.latitude.toFixed(6);
+        $("#lon").value = ip.longitude.toFixed(6);
+        $("#city").value = [ip.city, ip.region, ip.country_name].filter(Boolean).join(", ");
 
-        setMap(ip.latitude,ip.longitude);
+        setMap(ip.latitude, ip.longitude);
         await fetchPrayers();
     } catch {
         alert("IP lookup failed.");
@@ -274,6 +297,7 @@ window.addEventListener("DOMContentLoaded", async () => {
         await fetchPrayers();
     });
 });
+
 
 // Auto-clamp & round on blur
 [
