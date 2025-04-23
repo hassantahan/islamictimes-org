@@ -1,4 +1,4 @@
-# Prayer Times Web App
+# Islamic Times Web App
 
 A minimal, sleek, and responsive Flask application that displays local Islamic prayer times based on user-provided coordinates or location search. Utilizes `islamic_times` for computation and OpenStreetMap for geocoding.
 
