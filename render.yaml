@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: islamictimes-org
+    env: docker
+    branch: main
+    dockerfilePath: ./Dockerfile
+    plan: starter
