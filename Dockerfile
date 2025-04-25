@@ -31,11 +31,14 @@ FROM python:3.11-slim-bookworm
 
 # Install system dependencies (including GDB and core dump tools)
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-    libproj25 libgeos-c1d libffi-dev \
-    gdb procps \
+    apt-get install -y \
+    python3-full python3-venv python3-dev \
+      build-essential \
+      proj-bin proj-data libproj-dev \
+      autoconf automake libtool pkg-config \
+      libffi-dev \
     && rm -rf /var/lib/apt/lists/*
-
+    
 WORKDIR /app
 
 RUN python -m venv /opt/venv
