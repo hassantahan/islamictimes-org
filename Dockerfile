@@ -3,9 +3,10 @@ FROM ubuntu:25.04
 
 RUN apt-get update && \
     apt-get install -y \
-      python3-full python3-venv python3-dev python3-pip \
+    python3-full python3-venv python3-dev \
       build-essential \
       proj-bin proj-data libproj-dev \
+      autoconf automake libtool pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
