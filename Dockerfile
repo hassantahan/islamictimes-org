@@ -16,10 +16,9 @@ ENV PATH="/opt/venv/bin:${PATH}"
 
 COPY requirements.txt .
 
-# now pip refers to venv’s pip, not the system one
 RUN pip install --upgrade pip \
- && pip install --no-binary :all: islamic_times \
- && pip install -r requirements.txt
+ && pip install --no-binary :all: islamic_times --verbose \
+ && pip install -r requirements.txt --verbose
 
 COPY . .
 
