@@ -19,8 +19,8 @@ ENV PATH="/opt/venv/bin:${PATH}"
 COPY requirements.txt .
 
 RUN pip install --upgrade pip \
- && pip install --no-binary :all: islamic_times --verbose \
- && pip install -r requirements.txt --verbose
+ && pip install --no-binary islamic_times islamic_times --verbose \
+ && pip install --prefer-binary -r requirements.txt --verbose
 
 COPY . .
 
