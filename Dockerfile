@@ -24,4 +24,4 @@ RUN pip install --upgrade pip \
 
 COPY . .
 
-CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:$PORT", "--workers", "2"]
+CMD ["sh","-c","gunicorn app:app --bind 0.0.0.0:$PORT --workers 2"]
