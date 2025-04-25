@@ -7,6 +7,7 @@ RUN apt-get update && \
       build-essential \
       proj-bin proj-data libproj-dev \
       autoconf automake libtool pkg-config \
+      libffi-dev \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
