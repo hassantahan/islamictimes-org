@@ -37,7 +37,7 @@ FROM python:3.11-slim-bookworm
 # Install gdb for debugging
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-    libproj25 libgeos-c1d libffi-dev \
+    libproj25 libgeos-c1v5 libffi-dev \
     gdb \
     && rm -rf /var/lib/apt/lists/*
 
