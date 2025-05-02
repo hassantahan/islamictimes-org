@@ -27,56 +27,55 @@
 # CMD ["sh","-c","gunicorn app:app --bind 0.0.0.0:$PORT --workers 2"]
 
 
-# Use a stable Python version on a stable Debian base
 FROM python:3.11-slim-bookworm
 
-# Install system dependencies required by timezonefinder's underlying libraries
-# timezonefinder often requires libproj and libgeos
-# slim images are minimal, so we likely need to install these
-# libffi-dev is also commonly needed for various Python libraries
-# Install gdb for debugging
+# -------------------------------------------------
+# 1. Extra debug symbols for the interpreter & C lib
+# -------------------------------------------------
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-    libproj25 libgeos-c1v5 libffi-dev \
-    gdb \
-    && rm -rf /var/lib/apt/lists/*
+        libproj25 libgeos-c1v5 libffi-dev \
+        python3-dbg libpython3.11-dbg libc6-dbg \
+        gdb strace \
+        && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# create a venv in /opt/venv and put it first in PATH
+# -----------------------------------------
+# 2. Build every C extension with symbols
+# -----------------------------------------
+ENV CFLAGS="-O0 -g3 -fno-omit-frame-pointer" \
+    CXXFLAGS="$CFLAGS" \
+    LDFLAGS="-g" \
+    PYTHONFAULTHANDLER=1          \
+    # keep core files
+    SOFT_COREFILE_LIMIT="unlimited"
+
+# Lightweight venv
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:${PATH}"
 
 COPY requirements.txt .
 
-# Install Python dependencies using the venv
-# Ensure requirements.txt contains exact versions from your working environment
-RUN pip install --upgrade pip \
- && pip install --prefer-binary -r requirements.txt --verbose
+RUN pip install --upgrade pip && \
+    pip install --prefer-binary -r requirements.txt --verbose
 
 COPY . .
 
-# --- TEMPORARY DEBUGGING CMD ---
-# This CMD runs the minimal crashing Python command under GDB.
-# GDB is configured to print a backtrace ('bt') when the program receives a signal (like SIGSEGV).
-# The output will appear in your Render service logs.
-#
-# GDB commands:
-# - `--batch`: Run in batch mode (non-interactive), exit after commands.
-# - `-ex "set pagination off"`: Prevent GDB from pausing output.
-# - `-ex "run"`: Start the program being debugged.
-# - `-ex "bt"`: Print the backtrace.
-# - `--args`: The rest of the command is the program and its arguments.
-#
-# This command will cause the container to exit after the crash and GDB finishes.
-# The backtrace should be visible in the Render logs.
-CMD ["/usr/bin/gdb", "--batch", \
-     "-ex", "set pagination off", \
-     "-ex", "run", \
-     "-ex", "bt", \
-     "--args", "/opt/venv/bin/python", \
-     "-c", "from islamic_times.islamic_times import ITLocation; loc = ITLocation()"]
-
-# --- ORIGINAL CMD (Commented out for debugging) ---
-# Remember to uncomment and revert to this CMD after you have captured the backtrace!
-# CMD ["/opt/venv/bin/gunicorn", "app:app", "--bind", "0.0.0.0:$PORT", "--workers", "2"]
+# -------------------------------------------------
+# 3. GDB script – much richer output on crash
+# -------------------------------------------------
+CMD ["bash", "-c", "\
+      ulimit -c $SOFT_COREFILE_LIMIT && \
+      gdb --batch \
+          -ex 'set pagination off' \
+          -ex 'set print pretty on' \
+          -ex 'run' \
+          -ex 'echo \\n\\n--- BACKTRACE ---\\n' \
+          -ex 'thread apply all bt full' \
+          -ex 'echo \\n--- REGISTERS ---\\n' \
+          -ex 'info registers' \
+          -ex 'echo \\n--- DISASSEMBLY (current frame) ---\\n' \
+          -ex 'disassemble' \
+          -ex 'quit' \
+          --args /opt/venv/bin/python -X faulthandler -c \"from islamic_times.islamic_times import ITLocation; ITLocation()\""]
