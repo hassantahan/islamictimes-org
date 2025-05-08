@@ -3,32 +3,9 @@ const $$ = s => document.querySelectorAll(s);
 const show = el => el.classList.remove("hidden");
 const hide = el => el.classList.add("hidden");
 
-// // theme toggle
-// const themeToggle = $("#theme-toggle");
-// function updateThemeIcon() {
-//     themeToggle.textContent =
-//     document.documentElement.classList.contains("dark") ? "🌞" : "🌙";
-// }
-// // init theme
-// if (localStorage.getItem("theme") === "light") {
-//     document.documentElement.classList.remove("dark");
-// } else {
-//     document.documentElement.classList.add("dark");
-// }
-// updateThemeIcon();
-// themeToggle.addEventListener("click", () => {
-//     document.documentElement.classList.toggle("dark");
-//     localStorage.setItem(
-//         "theme",
-//         document.documentElement.classList.contains("dark") ? "dark" : "light"
-//     );
-//     updateThemeIcon();
-// });
-
 let currentCoords = null;
 let lastMethod = {};
 const PRAYER_ORDER = ["fajr","sunrise","zuhr","asr","sunset","maghrib","isha","midnight"];
-const prayerRowCache = {};
 
 function validateCoords(lat, lon) {
     return lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180;
@@ -39,21 +16,17 @@ function validateAngles(a) {
 }
 
 function fmtTime(iso) {
-    // 1) If we literally got our “Does not exist” sentinel, show it
     if (iso === "Does not exist") {
         return iso;
     }
-    // 2) If it’s not a non‑empty string or missing the “T”, bail out
     if (!iso || typeof iso !== "string" || !iso.includes("T")) {
         return "Does not exist";
     }
-    // 3) Safe parse: split out HH:MM and ignore the rest
     try {
         const [_, rest] = iso.split("T");
         const [h, m] = rest.split(".")[0].split(":");
         return `${h}:${m}`;
     } catch {
-        // in case something still goes wrong
         return "";
     }
 }
@@ -61,24 +34,34 @@ function fmtTime(iso) {
 function clamp(val, min, max) {
     return Math.max(min, Math.min(max, val));
 }
-  
 
 function round(val, decimals = 6) {
     return parseFloat(val.toFixed(decimals));
 }
 
+function formatLongDate(dateString) { 
+    if (!dateString || !/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+        return "Select a date"; 
+    }
+    const dateObj = new Date(dateString + 'T00:00:00');
+    const dayOfWeek = dateObj.toLocaleDateString(undefined, { weekday: 'long' });
+    const dayOfMonth = dateObj.toLocaleDateString(undefined, { day: 'numeric' });
+    const monthName = dateObj.toLocaleDateString(undefined, { month: 'long' });
+    const yearNum = dateObj.toLocaleDateString(undefined, { year: 'numeric' });
+    return `${dayOfWeek}, ${dayOfMonth} of ${monthName}, ${yearNum}`;
+}
+
 function renderTable(json) {
-    // update each prayer's time cell
     Object.entries(json).forEach(([key, obj]) => {
         if (key === "method") return;
         const cell = document.getElementById(`time-${key}`);
         if (cell) cell.textContent = fmtTime(obj.time);
     });
-
-    // update method name header
-    $("#method-name").textContent = json.method.name;
+    const methodDisplayElem = $("#method-display-bottom");
+    if (methodDisplayElem) {
+        methodDisplayElem.textContent = json.method.name;
+    }
     lastMethod = json.method;
-    // show($("#results"));
 }  
 
 function setMap(lat,lon) {
@@ -90,10 +73,14 @@ function setMap(lat,lon) {
 
 async function fetchPrayers() {
     show($("#spinner"));
-    // start spinner only if request lasts >150 ms
     const spinTimeout = setTimeout(() => show($("#spinner")), 250);
 
     try {
+        const selectedDate = $("#date-picker").value;
+        if ($("#current-date-display") && selectedDate) {
+             $("#current-date-display").textContent = formatLongDate(selectedDate);
+        }
+
         const m = $("#method").value;
         const method = { 
             name: m,
@@ -101,7 +88,7 @@ async function fetchPrayers() {
             midnight_type: $("#midnight").value==="jafari"?1:0
         };
         if (m==="CUSTOM") {
-            method.name = "custom";
+            method.name = "custom"; 
             method.fajr_angle    = parseFloat($("#fajr_angle").value)||undefined;
             method.maghrib_angle = parseFloat($("#maghrib_angle").value)||undefined;
             method.isha_angle    = parseFloat($("#isha_angle").value)||undefined;
@@ -112,7 +99,7 @@ async function fetchPrayers() {
             body: JSON.stringify({
                 lat: currentCoords.lat,
                 lon: currentCoords.lon,
-                date: new Date().toISOString().slice(0,10),
+                date: selectedDate, 
                 method
             })
         });
@@ -143,7 +130,7 @@ $("#city").addEventListener("input",()=>{
     list.forEach(it=>{
         const li=document.createElement("li");
         li.textContent=it.display_name;
-        li.className="px-3 py-2 hover:bg-gray-200 cursor-pointer";
+        li.className="px-3 py-2 hover:bg-gray-200 dark:hover:bg-gray-600 cursor-pointer";
         li.onclick=async()=>{
         $("#city").value=it.display_name;
         $("#lat").value=it.lat;
@@ -159,21 +146,25 @@ $("#city").addEventListener("input",()=>{
     }, 300);
 });
 document.addEventListener("click",e=>{
-    if(!e.target.closest("#city")) hide($("#autocomplete-suggestions"));
+    if(!e.target.closest("#city") && !e.target.closest("#autocomplete-suggestions")) { 
+        hide($("#autocomplete-suggestions"));
+    }
 });
 
 // Modal open/close
 $("#open-adv").onclick = () => {
     show($("#adv-modal"));
-    // force the #method change handler to run and prefill if CUSTOM
     $("#method").dispatchEvent(new Event("change"));
 };
 $("#close-adv").onclick  = () => hide($("#adv-modal"));
 
 // GPS button with reverse-geocode
 $("#use-gps").onclick = () => {
+    if (!navigator.geolocation) {
+        alert("Geolocation is not supported by your browser.");
+        return;
+    }
     navigator.geolocation.getCurrentPosition(async ({coords}) => {
-      // clamp & round
       let lat = clamp(coords.latitude,  -90,  90);
       let lon = clamp(coords.longitude, -180, 180);
       lat = round(lat);
@@ -183,47 +174,43 @@ $("#use-gps").onclick = () => {
       $("#lat").value  = lat;
       $("#lon").value  = lon;
   
-      // now reverse-geocode, map, fetch
-      const rev = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`
-      ).then(r=>r.json());
-      $("#city").value = rev.display_name || "";
+      try {
+        const rev = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`
+        ).then(r=>r.json());
+        $("#city").value = rev.display_name || "";
+      } catch (err) {
+        console.warn("Reverse geocoding failed", err);
+        $("#city").value = "Current Location"; 
+      }
   
       setMap(lat, lon);
       await fetchPrayers();
-    }, ()=>alert("GPS denied."));
+    }, ()=>{alert("GPS permission denied or unavailable.");});
 };
 
 // manual form
 $("#manual-form").onsubmit = async e => {
     e.preventDefault();
-
-    // parse
     let lat = parseFloat($("#lat").value);
     let lon = parseFloat($("#lon").value);
-    if (isNaN(lat) || isNaN(lon)) return alert("Enter valid coordinates.");
-
-    // clamp to valid range
+    if (isNaN(lat) || isNaN(lon) || !validateCoords(lat, lon)) { 
+        alert("Enter valid coordinates.");
+        return;
+    }
     lat = clamp(lat, -90,  90);
     lon = clamp(lon, -180, 180);
-
-    // round to 6 decimals
     lat = round(lat);
     lon = round(lon);
-
-    // write back into inputs so user sees it
     $("#lat").value = lat;
     $("#lon").value = lon;
 
-    // reverse-geocode to update the city/address field
     try {
         const rev = await fetch(
             `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`
         ).then(r => r.json());
         $("#city").value = rev.display_name || "";
-    } catch {
-        // quietly ignore if reverse fails
-    }
+    } catch { /* quietly ignore if reverse fails */ }
 
     currentCoords = { lat, lon };
     setMap(lat, lon);
@@ -232,74 +219,112 @@ $("#manual-form").onsubmit = async e => {
 
 $("#method").addEventListener("change", () => {
     const isCustom = $("#method").value === "CUSTOM";
-  
-    // show or hide the three inputs
     $$("#fajr_angle, #maghrib_angle, #isha_angle")
       .forEach(el => isCustom ? show(el) : hide(el));
-  
     if (isCustom) {
-      // hard‑coded defaults
       $("#fajr_angle").value    = 15;
       $("#maghrib_angle").value = 0;
       $("#isha_angle").value    = 15;
     } else {
-      // reset midnight rule for built‑ins
       $("#midnight").value = $("#method").value === "JAFARI" ? "jafari" : "standard";
     }
 });
 
 // On load
 window.addEventListener("DOMContentLoaded", async () => {
-    const btn = document.getElementById("theme-toggle");
-    const root = document.documentElement;
+    // Theme toggle logic
+    const themeToggleButton = document.getElementById("theme-toggle");
+    const htmlRootElement = document.documentElement;
 
-    // Apply theme and update icon
-    function apply(theme) {
-        if (theme === "dark") {
-            root.classList.add("dark");
-            btn.textContent = "🌞";
-        } else {
-            root.classList.remove("dark");
-            btn.textContent = "🌙";
+    function applyVisualTheme(themeName) { // themeName is 'light' or 'dark'
+        if (themeName === "dark") {
+            htmlRootElement.classList.add("dark");
+            if(themeToggleButton) themeToggleButton.textContent = "🌞"; // Sun icon when dark
+        } else { // themeName === 'light'
+            htmlRootElement.classList.remove("dark");
+            if(themeToggleButton) themeToggleButton.textContent = "🌙"; // Moon icon when light
         }
     }
 
-    // Choose theme: stored → else system preference
-    const stored = localStorage.getItem("theme");
-    const isDark = stored ? stored === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
-    apply(isDark ? "dark" : "light");
+    // Determine and apply initial theme
+    const storedThemePreference = localStorage.getItem("theme");
+    const systemPrefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    
+    let initialTheme = "light"; // Default to light
+    if (storedThemePreference === "dark") {
+        initialTheme = "dark";
+    } else if (storedThemePreference === "light") {
+        initialTheme = "light";
+    } else if (systemPrefersDark) { // No stored preference, use system preference
+        initialTheme = "dark";
+    }
+    applyVisualTheme(initialTheme);
 
-    // Toggle theme on click
-    btn.addEventListener("click", () => {
-        const next = root.classList.contains("dark") ? "light" : "dark";
-        apply(next);
-        localStorage.setItem("theme", next);
-    });
+    // Add click listener for theme toggle
+    if(themeToggleButton) {
+        themeToggleButton.addEventListener("click", () => {
+            const newTheme = htmlRootElement.classList.contains("dark") ? "light" : "dark";
+            applyVisualTheme(newTheme);
+            localStorage.setItem("theme", newTheme);
+        });
+    }
+    // End of theme toggle logic
+
+    // Initialize date picker to today
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const todayISO = `${year}-${month}-${day}`;
+    
+    if ($("#date-picker")) {
+        $("#date-picker").value = todayISO;
+    }
 
     // Initial IP lookup + field population
     try {
         const ip = await fetch("https://ipapi.co/json/").then(r => r.json());
-        currentCoords = { lat: ip.latitude, lon: ip.longitude };
+        currentCoords = { lat: round(ip.latitude), lon: round(ip.longitude) }; 
 
-        $("#lat").value = ip.latitude.toFixed(6);
-        $("#lon").value = ip.longitude.toFixed(6);
+        $("#lat").value = currentCoords.lat;
+        $("#lon").value = currentCoords.lon;
         $("#city").value = [ip.city, ip.region, ip.country_name].filter(Boolean).join(", ");
 
-        setMap(ip.latitude, ip.longitude);
-        await fetchPrayers();
-    } catch {
-        alert("IP lookup failed.");
+        setMap(currentCoords.lat, currentCoords.lon);
+        await fetchPrayers(); 
+    } catch(err) {
+        console.warn("IP lookup failed.", err);
+        currentCoords = null; 
+        if ($("#current-date-display") && $("#date-picker")) {
+             $("#current-date-display").textContent = formatLongDate($("#date-picker").value);
+        }
+        if (!$("#city").value) $("#city").value = "Location not set";
     }
 
-    // Restore the Compute‑button click handler
     $("#compute-btn").addEventListener("click", async (e) => {
         e.preventDefault();
-        await fetchPrayers();
+        if (currentCoords) { 
+            await fetchPrayers();
+        } else {
+            alert("Please set a location first.");
+        }
+        hide($("#adv-modal")); 
     });
+
+    if ($("#date-picker")) {
+        $("#date-picker").addEventListener("change", async () => {
+            if (currentCoords && typeof currentCoords.lat === 'number' && typeof currentCoords.lon === 'number') {
+                await fetchPrayers(); 
+            } else {
+                const selectedDate = $("#date-picker").value;
+                if ($("#current-date-display") && selectedDate) {
+                    $("#current-date-display").textContent = formatLongDate(selectedDate);
+                }
+            }
+        });
+    }
 });
 
-
-// Auto-clamp & round on blur
 [
     { sel: "#lat",   min: -90,  max:  90,  dec: 6 },
     { sel: "#lon",   min: -180, max: 180,  dec: 6 },
@@ -307,14 +332,15 @@ window.addEventListener("DOMContentLoaded", async () => {
     { sel: "#maghrib_angle",min: 0, max: 90, dec: 1 },
     { sel: "#isha_angle",   min: 0, max: 90, dec: 1 }
 ].forEach(({sel, min, max, dec}) => {
-    const el = document.querySelector(sel);
+    const el = $(sel); 
     if (!el) return;
     el.addEventListener("blur", () => {
         let v = parseFloat(el.value);
-        if (isNaN(v)) return;
+        if (isNaN(v)) { 
+          return;
+        }
         v = clamp(v, min, max);
         v = round(v, dec);
         el.value = v;
     });
 });
-  

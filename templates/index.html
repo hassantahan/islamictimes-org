@@ -6,7 +6,9 @@
   <title>Prayer Times</title>
   <!-- Enable Tailwind dark mode via class -->
   <script>
-    tailwind.config = {
+    // Ensure the global tailwind object exists before assigning config to it
+    window.tailwind = window.tailwind || {}; 
+    window.tailwind.config = {
       darkMode: 'class',
       safelist: [
         // background colours you use
@@ -33,7 +35,7 @@
   <!-- Header -->
   <header class="bg-white dark:bg-gray-800 shadow-sm">
     <div class="container mx-auto px-4 py-3 flex justify-between items-center">
-      <h1 class="text-lg font-semibold">Islamic Times</h1>
+      <h1 class="text-lg font-semibold"><a href="/">Islamic Times</a></h1>
       <div class="flex space-x-4">
         <button type="button" id="theme-toggle" class="text-xl">🌞</button>
         <button type="button" id="open-adv" class="text-xl">⚙️</button>
@@ -44,7 +46,12 @@
   <main class="flex-grow container mx-auto px-4 py-8 space-y-8">
     <!-- Results table (always visible) -->
     <section id="results" class="mb-8">
-      <h2 id="method-name" class="text-center text-lg font-medium mb-4"></h2>
+      <!-- Date display and picker -->
+      <div class="flex flex-col sm:flex-row justify-center items-center space-y-2 sm:space-y-0 sm:space-x-4 mb-4">
+        <!-- <h2 id="current-date-display" class="text-center text-lg font-medium"></h2> -->
+        <input type="date" id="date-picker" class="border rounded px-3 py-2 dark:bg-gray-700 dark:border-gray-600">
+      </div>
+      
       <div class="overflow-x-auto max-w-md mx-auto">
         <table class="min-w-full bg-white dark:bg-gray-800 shadow rounded-lg">
           <tbody id="prayer-body" class="divide-y">
@@ -59,6 +66,8 @@
           </tbody>
         </table>
       </div>
+      <!-- Method name display (moved below table) -->
+      <h2 id="method-display-bottom" class="text-center text-sm text-gray-600 dark:text-gray-400 mt-4"></h2>
     </section>
 
     <!-- Location + Map -->
