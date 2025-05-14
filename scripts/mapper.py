@@ -1,23 +1,24 @@
-import os
-import sys
+import os, sys, tempfile, gc, psutil, argparse
+
 import numpy as np
-from time import time
 import geopandas as gpd
-from typing import List, Tuple
-from multiprocessing import Pool, cpu_count
-from datetime import timedelta, datetime
 import islamic_times.astro_core as fast_astro
+
+from time import time
+from typing import List, Tuple
+from datetime import timedelta, datetime
+from multiprocessing import Pool, cpu_count, Process
 from islamic_times.time_equations import get_islamic_month, gregorian_to_hijri
 
 # Plotting libraries
-from textwrap import wrap
-from matplotlib.axes import Axes
-from matplotlib.patches import Rectangle
-from matplotlib.collections import LineCollection
-from matplotlib.patheffects import Stroke, Normal
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
+
+from textwrap import wrap
+from matplotlib.axes import Axes
+from matplotlib.patches import Rectangle
+from matplotlib.patheffects import Stroke, Normal
 
 AVERAGE_LUNAR_MONTH_DAYS: int = 29.53059
 
@@ -142,6 +143,87 @@ class Tee:
         self.stdout.flush()
         self.file.flush()
 
+def _write_chunk_to_memmap(args):
+    (
+      i_chunk, chunk, lon_vals, new_moon_date, days, criterion,
+      utc_offset, elev, temp, press, is_raw,
+      cat_to_idx,
+      vis_file, shape
+    ) = args
+
+    # reopen the memmap for read/write:
+    vis_memmap = np.memmap(vis_file, dtype=(np.float32 if is_raw else np.uint8),
+                           mode="r+", shape=shape)
+
+    # do your batch compute
+    L, M = np.meshgrid(chunk, lon_vals, indexing="ij")
+    res_flat = fast_astro.compute_visibilities_batch(
+        np.ascontiguousarray(L.ravel(), dtype=np.float64),
+        np.ascontiguousarray(M.ravel(), dtype=np.float64),
+        new_moon_date, days, criterion,
+        utc_offset, elev, temp, press,
+        "r" if is_raw else "c"
+    )
+    res = res_flat.reshape(chunk.size, len(lon_vals), days)
+
+    # if in category mode, map string labels → integers
+    if not is_raw:
+        n_chunk = chunk.size
+        nx = len(lon_vals)
+        mapped = np.empty((n_chunk, nx, days), dtype=np.uint8)
+        for category, idx in cat_to_idx.items():
+            mask = (res == category)
+            if mask.any():
+                mapped[mask] = idx
+        res = mapped
+
+    # write into the right slice
+    start = sum(c.size for c in VIS_LAT_CHUNKS[:i_chunk])
+    vis_memmap = np.memmap(vis_file, dtype=(np.float32 if is_raw else np.uint8),
+                           mode="r+", shape=shape)
+    vis_memmap[start:start+n_chunk, :, :] = res
+    vis_memmap.flush()
+
+def _plot_worker(
+    lon_vals, lat_vals, vis_file, shape, mode,
+    shp_states_path, shp_places_path, cities,
+    unique_categories, category_colors_rgba,
+    start_date, amount, out_dir,
+    islamic_month_name, islamic_year, criterion, region
+):
+    import geopandas as gpd, numpy as np, matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from shapely.geometry import Polygon
+    # re-open memmap
+    vis_mm = np.memmap(vis_file,
+                       dtype=(np.float32 if mode=="raw" else np.uint8),
+                       mode="r", shape=shape)
+
+    # load & clip shapefiles here, in the child only
+    states = gpd.read_file(shp_states_path)
+    places = gpd.read_file(shp_places_path)
+    places = places[places["NAME"].isin(cities)]
+    places = places.loc[places.groupby("NAME")["POP_MAX"].idxmax()]
+
+    # create clip bbox & apply
+    minx, maxx, miny, maxy = REGION_COORDINATES[region]
+    bbox = Polygon([(minx, miny), (maxx, miny), (maxx, maxy), (minx, maxy)])
+    bbox_gdf = gpd.GeoDataFrame([1], geometry=[bbox], crs=states.crs)
+    states_clip = gpd.overlay(states, bbox_gdf, how="intersection")
+    places_clip = places.cx[minx:maxx, miny:maxy]
+
+    # call your existing plot_map exactly as is,
+    # passing vis_mm instead of an in-memory array
+    plot_map(
+        lon_vals, lat_vals, vis_mm,
+        states_clip, places_clip,
+        unique_categories, category_colors_rgba,
+        start_date, amount, out_dir,
+        islamic_month_name, islamic_year, criterion,
+        amount, mode
+    )
+
 def print_ts(message: str):
     print(f"[{datetime.fromtimestamp(time()).strftime('%X %d-%m-%Y')}] {message}")
 
@@ -159,22 +241,55 @@ def batch_worker(lat_chunk, lon_vals, dt, days, criterion, utc_offset, elev, tem
 
 def compute_visibility_map_parallel(lon_vals, lat_vals, new_moon_date, days, criterion,
                                     utc_offset=0.0, elev=0.0, temp=20.0, press=101.325,
-                                    mode="category", num_workers=cpu_count()):
-    mode_byte: str = 'r' if mode == "raw" else 'c'
+                                    mode="category", max_workers=None):
+    """Compute and store (ny, nx, days) results on disk via memmap."""
+    # pick dtype: raw→float32, category→uint8
+    is_raw = (mode == "raw")
+    dtype = np.float32 if is_raw else np.uint8
+
+    # figure out chunking & worker count
+    num_workers = cpu_count() if max_workers is None else max_workers
     num_workers = min(num_workers, len(lat_vals))
     lat_chunks = [c for c in np.array_split(lat_vals, num_workers) if c.size]
 
     print_ts(f"Conjunction Date: {new_moon_date.strftime('%Y-%m-%d %X')}")
 
-    args = [(chunk, lon_vals, new_moon_date, days, criterion, utc_offset, elev, temp, press, mode_byte)
-            for chunk in lat_chunks]
+    cat_to_idx = {}
+    if not is_raw:
+        categories, _ = get_category_colors(criterion)
+        cat_to_idx = { cat: i for i, cat in enumerate(categories.keys()) }
 
-    with Pool(num_workers) as pool:
-        results = pool.starmap(batch_worker, args)
+    # create a temporary file to back our full array
+    global VIS_LAT_CHUNKS
+    VIS_LAT_CHUNKS = [c for c in np.array_split(lat_vals, num_workers) if c.size]
 
-    # Stack along latitude axis to reconstruct full (ny, nx, days) array
-    visibilities_3d = np.vstack(results)
-    return visibilities_3d
+    # create the temp memmap
+    vis_file = os.path.join(tempfile.gettempdir(),
+                            f"vis_{os.getpid()}_{int(time())}.dat")
+    shape = (len(lat_vals), len(lon_vals), days)
+    dtype = np.float32 if is_raw else np.uint8
+    np.memmap(vis_file, dtype=dtype, mode="w+", shape=shape)
+
+    # build argument list
+    args_list = []
+    for i, chunk in enumerate(VIS_LAT_CHUNKS):
+        args_list.append((
+            i, chunk, lon_vals, new_moon_date, days, criterion,
+            utc_offset, elev, temp, press, is_raw,
+            cat_to_idx,
+            vis_file, shape
+        ))
+
+    if num_workers == 1:
+        for a in args_list:
+            _write_chunk_to_memmap(a)
+    else:
+        with Pool(num_workers) as pool:
+            pool.map(_write_chunk_to_memmap, args_list)
+
+    # return both objects so callers know where the file lives
+    mm = np.memmap(vis_file, dtype=dtype, mode="r", shape=shape)
+    return mm, vis_file
 
 def load_shapefiles(states_path, places_path, cities):
     states_gdf = gpd.read_file(states_path)
@@ -224,15 +339,22 @@ def get_category_colors(visibility_type):
     return selected_categories, colors_rgba
 
 def map_visibilities(visibilities_3d, category_to_index, ny, nx, amount, mode="category"):
-    if mode == "raw":
-        return visibilities_3d  # already numeric
-    else:
-        visibilities_mapped = np.zeros((ny, nx, amount), dtype=int)
-        for i_lat in range(ny):
-            for i_lon in range(nx):
-                for i_day in range(amount):
-                    visibilities_mapped[i_lat, i_lon, i_day] = category_to_index[visibilities_3d[i_lat, i_lon, i_day]]
-        return visibilities_mapped
+    """
+    If mode=='category', visibilities_3d is already a uint8 array of indices.
+    Otherwise (raw mode) we map each q-value into category_to_index.
+    """
+    if mode == "category":
+        # already numeric indices 0..N-1
+        return visibilities_3d
+
+    # raw mode: build a fresh integer map
+    visibilities_mapped = np.zeros((ny, nx, amount), dtype=int)
+    for i_lat in range(ny):
+        for i_lon in range(nx):
+            for i_day in range(amount):
+                cat = visibilities_3d[i_lat, i_lon, i_day]
+                visibilities_mapped[i_lat, i_lon, i_day] = category_to_index[cat]
+    return visibilities_mapped
 
 def signed_log_transform(x, epsilon: float):
     """Apply a signed pseudo-log transform to handle both negative and positive values."""
@@ -367,7 +489,7 @@ def annotate_plot(fig, start_date, criterion, days, islamic_month_name, islamic_
 
 def name_fig(start_date, islamic_month_name, islamic_year, criterion, mode):
     name = f"{start_date.strftime('%Y-%m-%d')} {islamic_month_name} {islamic_year}"
-    name += "—Yallop" if criterion == 1 else "Odeh"
+    name += "—Yallop" if criterion == 1 else "—Odeh"
     qual = 95 if mode == "raw" else 90
     if mode == "raw":
         name += " Gradient"
@@ -393,11 +515,11 @@ def plot_map(lon_vals, lat_vals, visibilities_mapped, states_clip, places_clip,
     for i_day, ax in enumerate(axes):
         print_ts(f"Plotting: Plotting Day {i_day + 1} ...")
         if mode == "raw":
-            z_data_raw = visibilities_mapped[..., i_day]
+            z_data_raw = visibilities_mapped[:, :, i_day]
             print_ts(f"Plotting: Raw map plotting for Day {i_day + 1} ...")
             mesh = plot_raw_map(ax, lon_vals, lat_vals, z_data_raw, cmap, epsilon, norm)
         else:
-            data = visibilities_mapped[..., i_day]
+            data = visibilities_mapped[:, :, i_day]
             mesh = ax.pcolormesh(lon_vals, lat_vals, data, cmap=cmap, norm=norm, shading="auto")
 
         print_ts(f"Plotting: Adding features for {i_day + 1} ...")
@@ -422,10 +544,10 @@ def plot_map(lon_vals, lat_vals, visibilities_mapped, states_clip, places_clip,
     print_ts("Plotting: Saving...")
     plt.savefig(os.path.join(out_dir, name), format='jpg',
                 pil_kwargs={'optimize': True, 'progressive': True, 'quality': qual})
-    plt.close()
+    plt.close('all')
 
 def plotting_loop(new_moon_date: datetime, map_params: Tuple, master_path: str = "maps/", mode: str = "category", region: str = 'WORLD', 
-                  amount: int = 1, visibility_criterion: int = 0):
+                  amount: int = 1, visibility_criterion: int = 0, workers: int = None):
     # Start timing for the month
     month_start_time: float = time()
     
@@ -440,7 +562,7 @@ def plotting_loop(new_moon_date: datetime, map_params: Tuple, master_path: str =
     islamic_month_name = get_islamic_month(islamic_month)
 
     # Unpack map parameters
-    states_clip, places_clip, lon_vals, lat_vals, nx, ny = map_params
+    states_path, places_path, lon_vals, lat_vals, nx, ny, cities = map_params
 
     # Create path
     path = f"{master_path}{region.replace('_', ' ').title()}/{islamic_year}/"
@@ -454,7 +576,10 @@ def plotting_loop(new_moon_date: datetime, map_params: Tuple, master_path: str =
     # Calculate
     print_ts(f"Calculating new moon crescent visibilities...")
     t1 = time()
-    visibilities_3d = compute_visibility_map_parallel(lon_vals, lat_vals, new_moon_date, amount, visibility_criterion, mode=mode)
+    visibilities_mm, vis_file = compute_visibility_map_parallel(
+        lon_vals, lat_vals, new_moon_date, amount,
+        visibility_criterion, mode=mode, max_workers=workers
+    )
     print_ts(f"Time taken: {(time() - t1):.2f}s")
 
     # Categorization
@@ -464,28 +589,58 @@ def plotting_loop(new_moon_date: datetime, map_params: Tuple, master_path: str =
     print_ts(f"Time taken: {(time() - t1):.2f}s")
 
     # Categorize
-    print_ts(f"Colouring visibilities...")
-    t1 = time()
-    category_to_index = {cat: i for i, cat in enumerate(categories.keys())}
-    visibilities_mapped = map_visibilities(visibilities_3d, category_to_index, ny, nx, amount, mode=mode)
-    print_ts(f"Time taken: {(time() - t1):.2f}s")
+    if mode == "category":
+        visibilities_mapped = visibilities_mm        # already uint8
+    else:
+        print_ts("Colour-mapping raw values ...")
+        t1 = time()
+        categories, _ = get_category_colors(visibility_criterion)
+        cat2idx = {c: i for i, c in enumerate(categories.keys())}
+
+        # raw → new uint8 memmap on disk (still tiny vs float32)
+        tmp_path = os.path.join(tempfile.gettempdir(), f"cat_{os.getpid()}_{int(time())}.dat")
+        visibilities_mapped = np.memmap(tmp_path, dtype=np.uint8,
+                                        mode="w+", shape=visibilities_mm.shape)
+
+        ny, nx, days = visibilities_mm.shape
+        for d in range(days):
+            for c, idx in cat2idx.items():
+                mask = (visibilities_mm[:, :, d] == c)
+                visibilities_mapped[:, :, d][mask] = idx
+        visibilities_mapped.flush()
+        print_ts(f"Time taken: {(time()-t1):.2f}s")
 
     # Plotting
     print_ts(f"Plotting...")
     t1 = time()
-    plot_map(lon_vals, lat_vals, visibilities_mapped, states_clip, places_clip, 
-             list(categories.keys()) if mode == "category" else [], 
-             colors_rgba if mode == "category" else {}, 
-             new_moon_date, amount, path, 
-             islamic_month_name, islamic_year, visibility_criterion, amount, mode)
+    p = Process(
+        target=_plot_worker,
+        args=(
+            lon_vals, lat_vals,
+            vis_file, visibilities_mm.shape, mode,
+            states_path, places_path, cities,
+            list(categories.keys()) if mode=="category" else [],
+            colors_rgba if mode=="category" else {},
+            new_moon_date, amount, path,
+            islamic_month_name, islamic_year, visibility_criterion, region
+        )
+    )
+    p.start()
+    p.join()
     print_ts(f"Time taken: {(time() - t1):.2f}s")
+
+    # ===== CLEAN-UP =====
+    del visibilities_mm
+    gc.collect()
+    print_ts(f"RSS after clean-up: {psutil.Process(os.getpid()).memory_info().rss // (1024*1024)} MB")
 
     # Finished
     print_ts(f"===Map for {islamic_month_name}, {islamic_year} Complete===")
     print_ts(f"Time to generate map for {islamic_month_name}, {islamic_year}: {(time() - month_start_time):.2f}s")
 
 def main(today: datetime = datetime.now(), master_path: str = "maps/", total_months: int = 1, map_region: str = "WORLD", 
-         map_mode: str = "category", resolution: int = 300, days_to_generate: int = 3, criterion: int = 1, save_logs: bool = False):
+         map_mode: str = "category", resolution: int = 300, days_to_generate: int = 3, criterion: int = 1, save_logs: bool = False,
+         max_workers: int = None):
     
     map_region = map_region.upper()
     if save_logs:
@@ -496,17 +651,7 @@ def main(today: datetime = datetime.now(), master_path: str = "maps/", total_mon
     cities: List[str] = REGION_CITIES[map_region]
     coords: Tuple[int, int, int, int] = REGION_COORDINATES[map_region]
 
-    # Generate the map from the shp files
-    print_ts(f"Loading shape files...")
-    t1 = time()
-    states_gdf, places_gdf = load_shapefiles("scripts/map_shp_files/combined_polygons.shp", "scripts/map_shp_files/combined_points.shp", cities)
-    print_ts(f"Time taken: {(time() - t1):.2f}s")
-
-    # Clip
-    print_ts(f"Clipping map to coordinates...")
-    t1 = time()
-    states_clip, places_clip = clip_map(states_gdf, places_gdf, minx=coords[0], maxx=coords[1], miny=coords[2], maxy=coords[3])
-    print_ts(f"Time taken: {(time() - t1):.2f}s")
+    states_path, places_path = "scripts/map_shp_files/combined_polygons.shp", "scripts/map_shp_files/combined_points.shp"
 
     print_ts(f"Creating map grid...")
     t1 = time()
@@ -514,29 +659,25 @@ def main(today: datetime = datetime.now(), master_path: str = "maps/", total_mon
     print_ts(f"Time taken: {(time() - t1):.2f}s")
 
     for month in range(total_months):
-        assert map_mode in ("raw", "category"), f"Invalid mode: {map_mode}"
         new_moon_date: datetime = fast_astro.next_phases_of_moon_utc(today + timedelta(days=month * AVERAGE_LUNAR_MONTH_DAYS))[0]
 
-        plotting_loop(new_moon_date, map_params=(states_clip, places_clip, lon_vals, lat_vals, nx, ny), master_path=master_path, region=map_region, amount=days_to_generate, 
-                      visibility_criterion=criterion, mode=map_mode)
+        plotting_loop(new_moon_date, map_params=(states_path, places_path, lon_vals, lat_vals, nx, ny, cities), master_path=master_path, region=map_region, amount=days_to_generate, 
+                      visibility_criterion=criterion, mode=map_mode, workers=max_workers)
 
     print_ts(f"~~~ --- === Total time taken: {(time() - start_time):.2f}s === --- ~~~")
 
 if __name__ == "__main__":
-    import argparse
-
     parser = argparse.ArgumentParser(description="Generate new-moon visibility map")
-    parser.add_argument("--today",           type=str,   default=None,
-                        help="ISO datetime for month/year (e.g. 2025-01-01T00:00:00)")
-    parser.add_argument("--master_path",     type=str,   default="maps/",
-                        help="Directory where maps/… gets written")
+    parser.add_argument("--today",           type=str,   default=None, help="ISO datetime for month/year (e.g. 2025-01-01T00:00:00)")
+    parser.add_argument("--master_path",     type=str,   default="maps/", help="Directory where maps/… gets written")
     parser.add_argument("--total_months",    type=int,   default=1)
     parser.add_argument("--map_region",      type=str,   default="WORLD")
-    parser.add_argument("--map_mode",        type=str,   choices=("raw","category"), default="category")
+    parser.add_argument("--map_mode",        type=str,   default="category", choices=("raw","category"),)
     parser.add_argument("--resolution",      type=int,   default=300)
     parser.add_argument("--days_to_generate",type=int,   default=3)
-    parser.add_argument("--criterion",       type=int,   choices=(0,1), default=0)
+    parser.add_argument("--criterion",       type=int,   default=1, choices=(0,1))
     parser.add_argument("--save_logs",       action="store_true")
+    parser.add_argument("--max_workers",     type=int,   default=None, help="Max parallel processes (default = cpu_count())")
 
     args = parser.parse_args()
 
@@ -548,12 +689,13 @@ if __name__ == "__main__":
 
     main(
         today = today_dt,
-        master_path = args.master_path,
-        total_months = args.total_months,
-        map_region = args.map_region,
-        map_mode = args.map_mode,
-        resolution = args.resolution,
-        days_to_generate = args.days_to_generate,
-        criterion = args.criterion,
-        save_logs = args.save_logs
+        master_path         = args.master_path,
+        total_months        = args.total_months,
+        map_region          = args.map_region,
+        map_mode            = args.map_mode,
+        resolution          = args.resolution,
+        days_to_generate    = args.days_to_generate,
+        criterion           = args.criterion,
+        save_logs           = args.save_logs,
+        max_workers         = args.max_workers
     )

@@ -27,6 +27,9 @@
   <link rel="icon" type="image/png" sizes="32x32" href="static/img/icons/favicon-32x32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="static/img/icons/favicon-16x16.png">
   <link rel="manifest" href="static/img/icons/site.webmanifest">
+  <style>
+    .spacer { margin: 1rem 0; }
+  </style>
 </head>
 <body class="bg-gray-100 text-gray-900 dark:bg-gray-900 dark:text-gray-100 flex flex-col min-h-screen">
   <!-- Header -->
@@ -50,7 +53,8 @@
   </header>
 
   {% block content %}
-  <main class="flex-grow container mx-auto px-4 py-8 space-y-8"></main>
+  <!-- <main class="flex-grow container mx-auto px-4 py-8 space-y-8"></main> -->
+  <div class="spacer"></div>
     <!-- Results table (always visible) -->
     <section id="results" class="mb-8">
       <!-- Date display and picker -->
