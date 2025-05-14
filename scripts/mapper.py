@@ -164,7 +164,7 @@ def compute_visibility_map_parallel(lon_vals, lat_vals, new_moon_date, days, cri
     num_workers = min(num_workers, len(lat_vals))
     lat_chunks = [c for c in np.array_split(lat_vals, num_workers) if c.size]
 
-    print_ts(f"Conjunction Date: {new_moon_date.strftime("%Y-%m-%d %X")}")
+    print_ts(f"Conjunction Date: {new_moon_date.strftime('%Y-%m-%d %X')}")
 
     args = [(chunk, lon_vals, new_moon_date, days, criterion, utc_offset, elev, temp, press, mode_byte)
             for chunk in lat_chunks]
@@ -489,7 +489,7 @@ def main(today: datetime = datetime.now(), master_path: str = "maps/", total_mon
     
     map_region = map_region.upper()
     if save_logs:
-        sys.stdout = Tee(f'mapper_{datetime.fromtimestamp(time()).strftime("%Y-%m-%d_%H%M%S")}.log')
+        sys.stdout = Tee(f"mapper_{datetime.fromtimestamp(time()).strftime('%Y-%m-%d_%H%M%S')}.log")
     start_time: float = time()
 
     # Select region 
