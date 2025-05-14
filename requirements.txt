@@ -3,4 +3,5 @@ islamic_times>=2.0.6
 timezonefinder>=6.1.0
 requests>=2.25.1
 gunicorn
+psutil
 Flask-Compress
