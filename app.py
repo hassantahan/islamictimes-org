@@ -1,11 +1,13 @@
 from flask import Flask, render_template, request, jsonify, abort
 from islamic_times.islamic_times import ITLocation
+from islamic_times.time_equations import gregorian_to_hijri
 from timezonefinder import TimezoneFinder
 from datetime import datetime, timedelta
 from functools import lru_cache
 from zoneinfo import ZoneInfo
-import requests
-import math
+from misc import hijri_to_gregorian
+import requests, math, sys, time
+import subprocess, shutil, pathlib, tempfile
 
 OSM_NOMINATIM = "https://nominatim.openstreetmap.org/search"
 IPINFO        = "https://ipapi.co/json/"
@@ -13,6 +15,12 @@ IPINFO        = "https://ipapi.co/json/"
 app = Flask(__name__)
 # app.config['SEND_FILE_MAX_AGE_DEFAULT'] = timedelta(days=1)
 tf = TimezoneFinder()
+
+# Mapper
+MAP_OUT_DIR = pathlib.Path("static/maps")      # served by Flask’s static route
+MAP_OUT_DIR.mkdir(parents=True, exist_ok=True)
+CACHE_TTL = 24 * 3600          # seconds (≈ 1 day)
+_MAP_CACHE: dict[str, tuple[str, float]] = {}     # key → (filename, timestamp)
 
 # ---------------------------------------------------------------------------#
 # Helpers                                                                    #
@@ -32,7 +40,7 @@ def geocode(q: str) -> tuple[float, float]:
 
 
 def ip_location() -> tuple[float, float]:
-    """Fast but coarse – fallback only."""
+    """Fast but coarse - fallback only."""
     try:
         d = requests.get(IPINFO, timeout=3).json()
         return float(d["latitude"]), float(d["longitude"])
@@ -61,6 +69,91 @@ def _format_prayer(prayer):
         tstr = str(t)
     return {"name": prayer.name, "time": tstr}
 
+@app.get("/upcoming_hijri")
+def upcoming_hijri():
+    # client passes its local YYYY‑MM‑DD as ?date=…
+    gdate = request.args.get("date")
+    if not gdate:
+        abort(400, "Missing date.")
+    y, m, d = map(int, gdate.split("-"))
+    h_year, h_month, h_day = gregorian_to_hijri(y, m, d)
+    # bump to next month, handle year rollover
+    h_month += 1
+    if h_month > 12:
+        h_month = 1
+        h_year += 1
+    return jsonify({"month": h_month, "year": h_year})
+
+# ---------------------------------------------------------------------------#
+# Core Map Generator                                                         #
+# ---------------------------------------------------------------------------#
+
+@app.post("/generate_map")
+def generate_map():
+    """
+    Kick off mapper.py with the POSTed JSON payload and return
+    the image URL when it finishes.  Long-running -- front-end shows spinner.
+    """
+    p = request.get_json(silent=True) or {}
+    try:
+        hijri_month      = int(p["month"])        # 1‑12
+        hijri_year       = int(p["year"])         # 1‑2000 (per your UI text)
+        days             = int(p["days"])         # 1‑3    (dropdown)
+        criterion        = int(p["criterion"])    # 0 = Odeh, 1 = Yallop
+        resolution       = int(p["resolution"])   # 1‑500
+    except (KeyError, ValueError):
+        abort(400, "Bad parameters.")
+
+    if resolution < 50 or resolution > 500 or resolution % 50 != 0:
+        abort(400, "Resolution must be a multiple of 50 between 50 and 500.")
+
+    # --------  caching key ----------------------------------------
+    cache_key = f"{hijri_year}:{hijri_month}:{days}:{criterion}:{resolution}"
+    now = time.time()
+    # purge expired
+    _MAP_CACHE.update({
+        k: v for k, v in _MAP_CACHE.items() if now - v[1] < CACHE_TTL
+    })
+    if cache_key in _MAP_CACHE:
+        fname, _ = _MAP_CACHE[cache_key]
+        return jsonify({"url": f"/static/maps/{fname}"})
+
+    # --------  convert Hijri → Gregorian (first day of that month) ----
+    starting_iso = datetime.replace(hijri_to_gregorian(hijri_year, hijri_month, 1), tzinfo=ZoneInfo("UTC")).isoformat()
+
+    out_name = f"{hijri_year}-{hijri_month:02d}-{days}-{criterion}-{resolution}.jpg"
+    out_path = MAP_OUT_DIR / out_name
+
+    project_root = pathlib.Path(__file__).resolve().parent
+    mapper_script = project_root / "scripts" / "mapper.py"
+
+    # mapper.py CLI call – execute in temp dir so concurrent runs don’t clash
+    with tempfile.TemporaryDirectory() as tmp:
+        cmd = [
+            sys.executable, str(mapper_script),
+            "--today", starting_iso,
+            "--master_path", f"{tmp}/",  # mapper writes here
+            "--total_months", "1",
+            "--map_region", "WORLD",
+            "--map_mode",   "category",
+            "--resolution", str(resolution),
+            "--days_to_generate", str(days),
+            "--criterion", str(criterion)
+        ]
+        proc = subprocess.run(cmd, check=True, cwd=str(project_root),
+                                        capture_output=True, text=True)
+
+        if proc.returncode != 0:
+            app.logger.error(proc.stderr)
+            abort(500, "Map generation error.")
+
+        jpgs = list(pathlib.Path(tmp).rglob("*.jpg"))
+        if not jpgs:
+            abort(500, "No map produced.")
+        shutil.move(str(jpgs[0]), str(out_path))
+
+    _MAP_CACHE[cache_key] = (out_name, now)
+    return jsonify({"url": f"/static/maps/{out_name}"})
 
 # ---------------------------------------------------------------------------#
 # Core ITLocation builder                                                    #
@@ -119,6 +212,10 @@ def build_itlocation(payload: dict) -> ITLocation:
 def index():
     return render_template("index.html")
 
+@app.get("/visibilities")
+def visibilities_page():
+    """Serve the new schematic page."""
+    return render_template("visibilities.html")
 
 @app.post("/prayer_times")
 def prayer_times():

@@ -234,15 +234,15 @@ $("#method").addEventListener("change", () => {
 window.addEventListener("DOMContentLoaded", async () => {
     // Theme toggle logic
     const themeToggleButton = document.getElementById("theme-toggle");
-    const htmlRootElement = document.documentElement;
+    const htmlRootElement = document.documentElement; // This is the <html> element
 
     function applyVisualTheme(themeName) { // themeName is 'light' or 'dark'
         if (themeName === "dark") {
             htmlRootElement.classList.add("dark");
-            if(themeToggleButton) themeToggleButton.textContent = "🌞"; // Sun icon when dark
+            if(themeToggleButton) themeToggleButton.textContent = "🌞"; 
         } else { // themeName === 'light'
             htmlRootElement.classList.remove("dark");
-            if(themeToggleButton) themeToggleButton.textContent = "🌙"; // Moon icon when light
+            if(themeToggleButton) themeToggleButton.textContent = "🌙"; 
         }
     }
 
@@ -250,14 +250,17 @@ window.addEventListener("DOMContentLoaded", async () => {
     const storedThemePreference = localStorage.getItem("theme");
     const systemPrefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
     
-    let initialTheme = "light"; // Default to light
-    if (storedThemePreference === "dark") {
-        initialTheme = "dark";
-    } else if (storedThemePreference === "light") {
-        initialTheme = "light";
-    } else if (systemPrefersDark) { // No stored preference, use system preference
+    let initialTheme = "light"; 
+    if (storedThemePreference === "dark" || (!storedThemePreference && systemPrefersDark)) {
         initialTheme = "dark";
     }
+    // If you want to default to light unless explicitly set or system is dark:
+    // if (storedThemePreference) {
+    //    initialTheme = storedThemePreference;
+    // } else {
+    //    initialTheme = systemPrefersDark ? "dark" : "light";
+    // }
+
     applyVisualTheme(initialTheme);
 
     // Add click listener for theme toggle

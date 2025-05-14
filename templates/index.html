@@ -9,21 +9,18 @@
     // Ensure the global tailwind object exists before assigning config to it
     window.tailwind = window.tailwind || {}; 
     window.tailwind.config = {
-      darkMode: 'class',
+      darkMode: 'class', // This is correct
       safelist: [
-        // background colours you use
         'dark:bg-gray-900',
         'dark:bg-gray-800',
         'dark:bg-gray-700',
-        // text colours you use
         'dark:text-gray-100',
         'dark:text-gray-400',
-        // borders
         'dark:border-gray-600'
       ]
     };
   </script>
-  <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+  <script src="https://cdn.tailwindcss.com?plugins=typography"></script> <!-- CDN loads AFTER config -->
 
 
   <link rel="apple-touch-icon" sizes="180x180" href="static/img/icons/apple-touch-icon.png">
@@ -34,16 +31,26 @@
 <body class="bg-gray-100 text-gray-900 dark:bg-gray-900 dark:text-gray-100 flex flex-col min-h-screen">
   <!-- Header -->
   <header class="bg-white dark:bg-gray-800 shadow-sm">
-    <div class="container mx-auto px-4 py-3 flex justify-between items-center">
-      <h1 class="text-lg font-semibold"><a href="/">Islamic Times</a></h1>
-      <div class="flex space-x-4">
-        <button type="button" id="theme-toggle" class="text-xl">🌞</button>
-        <button type="button" id="open-adv" class="text-xl">⚙️</button>
+    <header class="bg-white dark:bg-gray-800 shadow-sm">
+      <div class="container mx-auto px-4 py-3 flex items-center justify-between">
+        <h1 class="text-lg font-semibold"><a href="/">Islamic Times</a></h1>
+    
+        <nav class="flex space-x-6 text-sm font-medium">
+          <a href="/"             class="hover:underline">Prayers</a>
+          <a href="/visibilities" class="hover:underline">Visibilities</a>
+          <a href="https://www.github.com/hassantahan/islamictimes-org" class="hover:underline" target="_blank" rel="noopener noreferrer">GitHub</a>
+        </nav>
+    
+        <div class="flex space-x-4">
+          <button id="theme-toggle" class="text-xl">🌞</button>
+          <button id="open-adv"     class="text-xl">⚙️</button>
+        </div>
       </div>
-    </div>
+    </header>
   </header>
 
-  <main class="flex-grow container mx-auto px-4 py-8 space-y-8">
+  {% block content %}
+  <main class="flex-grow container mx-auto px-4 py-8 space-y-8"></main>
     <!-- Results table (always visible) -->
     <section id="results" class="mb-8">
       <!-- Date display and picker -->
@@ -70,7 +77,7 @@
       <h2 id="method-display-bottom" class="text-center text-sm text-gray-600 dark:text-gray-400 mt-4"></h2>
     </section>
 
-    <!-- Location + Map -->
+    <!-- Location  Map -->
     <section class="max-w-md mx-auto space-y-4">
       <form id="manual-form" class="space-y-2">
         <input type="text" id="city" placeholder="City / Address" autocomplete="off"
@@ -102,6 +109,7 @@
       <img src="/static/img/spinner.svg"  class="w-16 h-16 animate-spin" alt="Loading…"/>
     </div>
   </main>
+  {% endblock %}
 
   <!-- Advanced Settings Modal -->
   <div id="adv-modal" class="fixed inset-0 flex items-center justify-center bg-black/50 hidden">
