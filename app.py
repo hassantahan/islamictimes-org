@@ -138,9 +138,10 @@ def generate_map():
             "--map_mode",   "category",
             "--resolution", str(resolution),
             "--days_to_generate", str(days),
-            "--criterion", str(criterion)
+            "--criterion", str(criterion),
+            "--save_logs"
         ]
-        proc = subprocess.run(cmd, check=True, cwd=str(project_root),
+        proc = subprocess.run(cmd, cwd=str(project_root),
                                         capture_output=True, text=True)
 
         if proc.returncode != 0:
