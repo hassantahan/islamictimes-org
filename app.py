@@ -154,7 +154,14 @@ def generate_map():
         jpgs = list(pathlib.Path(tmp).rglob("*.jpg"))
         if not jpgs:
             abort(500, "No map produced.")
-        shutil.move(str(jpgs[0]), str(out_path))
+            
+        try:
+            MAP_OUT_DIR.mkdir(parents=True, exist_ok=True)
+            shutil.move(str(jpgs[0]), str(out_path))
+        except Exception as e:
+            app.logger.exception(f"Failed to move generated map into static: {e}")
+            abort(500, "Server error saving map.")
+
 
     _MAP_CACHE[cache_key] = (out_name, now)
     return jsonify({"url": f"/static/maps/{out_name}"})
