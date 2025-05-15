@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from functools import lru_cache
 from zoneinfo import ZoneInfo
 from misc import hijri_to_gregorian
-import requests, math, sys, time
+import requests, math, sys, time, os
 import subprocess, shutil, pathlib, tempfile
 
 OSM_NOMINATIM = "https://nominatim.openstreetmap.org/search"
@@ -21,6 +21,9 @@ MAP_OUT_DIR = pathlib.Path("static/maps")      # served by Flask’s static rout
 MAP_OUT_DIR.mkdir(parents=True, exist_ok=True)
 CACHE_TTL = 24 * 3600          # seconds (≈ 1 day)
 _MAP_CACHE: dict[str, tuple[str, float]] = {}     # key → (filename, timestamp)
+
+app.logger.info("Gunicorn args from env: " + os.getenv("GUNICORN_CMD_ARGS", ""))
+app.logger.info("sys.argv: " + " ".join(sys.argv))
 
 # ---------------------------------------------------------------------------#
 # Helpers                                                                    #
