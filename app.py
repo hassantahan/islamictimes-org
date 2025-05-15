@@ -6,14 +6,17 @@ from datetime import datetime, timedelta
 from functools import lru_cache
 from zoneinfo import ZoneInfo
 from misc import hijri_to_gregorian
-import requests, math, sys, time, os
+import requests, math, sys, time, os, logging
 import subprocess, shutil, pathlib, tempfile
 
 OSM_NOMINATIM = "https://nominatim.openstreetmap.org/search"
 IPINFO        = "https://ipapi.co/json/"
 
 app = Flask(__name__)
-# app.config['SEND_FILE_MAX_AGE_DEFAULT'] = timedelta(days=1)
+app.logger.setLevel(logging.INFO)
+app.logger.info("GUNICORN_CMD_ARGS=" + os.getenv("GUNICORN_CMD_ARGS", ""))
+app.logger.info("sys.argv: " + " ".join(sys.argv))
+
 tf = TimezoneFinder()
 
 # Mapper
@@ -21,9 +24,6 @@ MAP_OUT_DIR = pathlib.Path("static/maps")      # served by Flask’s static rout
 MAP_OUT_DIR.mkdir(parents=True, exist_ok=True)
 CACHE_TTL = 24 * 3600          # seconds (≈ 1 day)
 _MAP_CACHE: dict[str, tuple[str, float]] = {}     # key → (filename, timestamp)
-
-app.logger.info("Gunicorn args from env: " + os.getenv("GUNICORN_CMD_ARGS", ""))
-app.logger.info("sys.argv: " + " ".join(sys.argv))
 
 # ---------------------------------------------------------------------------#
 # Helpers                                                                    #
@@ -247,6 +247,14 @@ def prayer_times():
     }
 
     return jsonify(out)
+
+
+@app.get("/__debug/gunicorn_args")
+def _debug_gunicorn_args():
+    return jsonify({
+        "GUNICORN_CMD_ARGS": os.environ.get("GUNICORN_CMD_ARGS"),
+        "sys_argv": sys.argv
+    })
 
 
 # ---------------------------------------------------------------------------#
