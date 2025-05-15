@@ -155,9 +155,12 @@ def generate_map():
         if not jpgs:
             abort(500, "No map produced.")
             
+        MAP_OUT_DIR.mkdir(parents=True, exist_ok=True)
+        src = pathlib.Path(jpgs[0])
+
         try:
-            MAP_OUT_DIR.mkdir(parents=True, exist_ok=True)
-            shutil.move(str(jpgs[0]), str(out_path))
+            # If an old file with that exact name exists, atomically replace it
+            os.replace(src, out_path)        # works even if out_path already exists
         except Exception as e:
             app.logger.exception(f"Failed to move generated map into static: {e}")
             abort(500, "Server error saving map.")
