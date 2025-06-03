@@ -20,6 +20,9 @@ app.logger.info("sys.argv: " + " ".join(sys.argv))
 tf = TimezoneFinder()
 
 # Mapper
+MAPS_BASE      = "https://islamictimes-maps.onrender.com"
+MAPS_INDEX_URL = f"{MAPS_BASE}/maps_index.json"
+
 MAP_OUT_DIR = pathlib.Path("static/maps")      # served by Flask’s static route
 MAP_OUT_DIR.mkdir(parents=True, exist_ok=True)
 CACHE_TTL = 24 * 3600          # seconds (≈ 1 day)
@@ -168,6 +171,14 @@ def generate_map():
 
     _MAP_CACHE[cache_key] = (out_name, now)
     return jsonify({"url": f"/static/maps/{out_name}"})
+
+@app.get("/maps_index")
+def maps_index():
+    if not hasattr(app, "_index_cache") or time.time() - app._index_cache[1] > 3600:
+        import requests
+        data = requests.get(MAPS_INDEX_URL, timeout=5).json()
+        app._index_cache = (data, time.time())
+    return jsonify(app._index_cache[0])
 
 # ---------------------------------------------------------------------------#
 # Core ITLocation builder                                                    #
