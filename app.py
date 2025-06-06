@@ -3,12 +3,12 @@ from islamic_times.islamic_times import ITLocation
 from islamic_times.it_dataclasses import Visibilities
 from islamic_times.time_equations import gregorian_to_hijri
 from timezonefinder import TimezoneFinder
-from datetime import datetime, timedelta
+from datetime import datetime
 from functools import lru_cache
 from zoneinfo import ZoneInfo
 from misc import hijri_to_gregorian
 import requests, math, sys, time, os, logging
-import subprocess, shutil, pathlib, tempfile, re
+import subprocess, pathlib, tempfile
 
 OSM_NOMINATIM = "https://nominatim.openstreetmap.org/search"
 IPINFO        = "https://ipapi.co/json/"
@@ -28,15 +28,6 @@ MAP_OUT_DIR = pathlib.Path("static/maps")      # served by Flask’s static rout
 MAP_OUT_DIR.mkdir(parents=True, exist_ok=True)
 CACHE_TTL = 24 * 3600          # seconds (≈ 1 day)
 _MAP_CACHE: dict[str, tuple[str, float]] = {}     # key → (filename, timestamp)
-
-# Visibilities Regex
-VIS_LINE_RE = re.compile(
-    r"^\s*"                                          # leading whitespace
-    r"(\d{2}:\d{2}:\d{2}\s+\d{2}-\d{2}-\d{4}):"      # (1) date/time
-    r"\s*([+-]?\d+\.\d+)"                            # (2) Q value (any decimals)
-    r"(?:\s+([A-Z]):)?"                              # (3) optional category letter + colon
-    r"\s*(.+)$"                                      # (4) description
-)
 
 # ---------------------------------------------------------------------------#
 # Helpers                                                                    #
