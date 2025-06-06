@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, jsonify, abort
 from islamic_times.islamic_times import ITLocation
+from islamic_times.it_dataclasses import Visibilities
 from islamic_times.time_equations import gregorian_to_hijri
 from timezonefinder import TimezoneFinder
 from datetime import datetime, timedelta
@@ -7,7 +8,7 @@ from functools import lru_cache
 from zoneinfo import ZoneInfo
 from misc import hijri_to_gregorian
 import requests, math, sys, time, os, logging
-import subprocess, shutil, pathlib, tempfile
+import subprocess, shutil, pathlib, tempfile, re
 
 OSM_NOMINATIM = "https://nominatim.openstreetmap.org/search"
 IPINFO        = "https://ipapi.co/json/"
@@ -27,6 +28,15 @@ MAP_OUT_DIR = pathlib.Path("static/maps")      # served by Flask’s static rout
 MAP_OUT_DIR.mkdir(parents=True, exist_ok=True)
 CACHE_TTL = 24 * 3600          # seconds (≈ 1 day)
 _MAP_CACHE: dict[str, tuple[str, float]] = {}     # key → (filename, timestamp)
+
+# Visibilities Regex
+VIS_LINE_RE = re.compile(
+    r"^\s*"                                          # leading whitespace
+    r"(\d{2}:\d{2}:\d{2}\s+\d{2}-\d{2}-\d{4}):"      # (1) date/time
+    r"\s*([+-]?\d+\.\d+)"                            # (2) Q value (any decimals)
+    r"(?:\s+([A-Z]):)?"                              # (3) optional category letter + colon
+    r"\s*(.+)$"                                      # (4) description
+)
 
 # ---------------------------------------------------------------------------#
 # Helpers                                                                    #
@@ -94,6 +104,7 @@ def upcoming_hijri():
 # Core Map Generator                                                         #
 # ---------------------------------------------------------------------------#
 
+# NOT USED
 @app.post("/generate_map")
 def generate_map():
     """
@@ -228,6 +239,56 @@ def build_itlocation(payload: dict) -> ITLocation:
 
     return loc
 
+# ---------------------------------------------------------------------------#
+# Routes                                                                     #
+# ---------------------------------------------------------------------------#
+
+@app.post("/vis_calc")
+def vis_calc():
+    payload = request.get_json(silent=True) or {}
+    try:
+        lat = float(payload["lat"])
+        lon = float(payload["lon"])
+        hijri_month = int(payload["hijri_month"])
+        hijri_year  = int(payload["hijri_year"])
+    except (KeyError, ValueError):
+        abort(400, "Need lat & lon in JSON.")
+
+    g_date = hijri_to_gregorian(hijri_year, hijri_month, 1)
+
+    # Build ITLocation (using Yallop, 3-day default)
+    loc = ITLocation(
+        latitude  = lat,
+        longitude = lon,
+        elevation = 0.0,
+        temperature = 15.0,
+        pressure = 101.325,
+        date = g_date,
+        find_local_tz=True
+    )
+    vis: Visibilities = loc.visibilities()
+
+    # Build JSON directly from the dataclass attributes
+    entries = []
+    for dt, q, cls in zip(vis.dates, vis.q_values, vis.classifications):
+        parts = cls.split(": ", 1)
+        if len(parts) == 2:
+            cat, desc = parts
+        else:
+            # No colon (e.g. "-998.0 Moonset before sunset.")
+            cat = "X"
+            desc = parts[0]
+        entries.append({
+            "datetime":    dt.strftime("%X %d-%m-%Y"),
+            "q":           f"{q:+.3f}",
+            "category":    cat,
+            "description": desc
+        })
+
+    return jsonify({
+        "criterion": vis.criterion,
+        "entries":   entries
+    })
 
 # ---------------------------------------------------------------------------#
 # Routes                                                                     #

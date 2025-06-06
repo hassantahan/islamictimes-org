@@ -37,5 +37,70 @@
 
 <div class="spacer"></div>
 
+<!-- Crescent-visibility calculator ----------------------------------------->
+<section class="max-w-3xl mx-auto space-y-4">
+  <h2 class="text-lg font-semibold mb-2">Crescent Visibility at Your Location</h2>
+
+  <!-- Results table -------------------------------------------------------->
+  <div class="overflow-x-auto">
+    <table id="vis-table" class="min-w-full bg-white dark:bg-gray-800 shadow rounded-lg">
+      <thead>
+        <tr>
+          <th class="px-4 py-2 text-left">Date & Time</th>
+          <th class="px-4 py-2 text-left">Q Value</th>
+          <th class="px-4 py-2 text-left">Category</th>
+          <th class="px-4 py-2 text-left">Description</th>
+        </tr>
+      </thead>
+      <tbody id="vis-body" class="divide-y">
+        <!-- populated by JS -->
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Criterion note (below the table) --------------------------------------->
+  <div id="vis-criterion" class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+    <!-- “Criterion: Yallop” will be injected here via JS -->
+  </div>
+
+  <!-- Search box ----------------------------------------------------------->
+  <input type="text" id="city" placeholder="City / Address" autocomplete="off"
+         class="w-full border rounded px-3 py-2 dark:bg-gray-700 dark:border-gray-600"/>
+  <ul id="autocomplete-suggestions"
+      class="border bg-white dark:bg-gray-700 dark:border-gray-600 rounded hidden max-h-40 overflow-y-auto"></ul>
+
+  <!-- Manual lat/lon ------------------------------------------------------->
+  <div class="flex space-x-4">
+    <input type="number" id="lat"  placeholder="Latitude"
+           class="flex-1 border rounded px-3 py-2 dark:bg-gray-700 dark:border-gray-600">
+    <input type="number" id="lon"  placeholder="Longitude"
+           class="flex-1 border rounded px-3 py-2 dark:bg-gray-700 dark:border-gray-600">
+  </div>
+
+  <!-- Buttons -------------------------------------------------------------->
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <button id="use-gps"
+            class="w-full bg-blue-500 text-white py-2 rounded-lg">
+      Use Precise GPS
+    </button>
+    <button id="use-manual"
+            class="w-full bg-emerald-600 text-white py-2 rounded-lg">
+      Use Manual Location
+    </button>
+  </div>
+
+  <!-- Small map ------------------------------------------------------------>
+  <div id="map-container" class="w-full h-48 bg-gray-300 dark:bg-gray-700 rounded-lg overflow-hidden">
+    <iframe id="map" class="w-full h-full" src="" frameborder="0" scrolling="no" loading="lazy"></iframe>
+  </div>
+  
+</section>
+
+<!-- Spinner overlay --------------------------------------------------------->
+<div id="map-spinner"
+     class="fixed inset-0 flex items-center justify-center bg-white/70 dark:bg-black/70 hidden">
+  <img src="/static/img/spinner.svg" class="w-20 h-20 animate-spin" alt="Loading…">
+</div>
+
 <script type="module" src="/static/js/visibilities.js"></script>
 {% endblock %}
