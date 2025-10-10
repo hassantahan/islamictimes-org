@@ -62,6 +62,14 @@
         <!-- <h2 id="current-date-display" class="text-center text-lg font-medium"></h2> -->
         <input type="date" id="date-picker" class="border rounded px-3 py-2 dark:bg-gray-700 dark:border-gray-600">
       </div>
+
+      <!-- Extreme latitude alert -->
+      <div id="lat-alert"
+           class="hidden mx-auto mb-4 max-w-md text-center text-sm px-3 py-2 rounded border
+                  border-yellow-400 bg-yellow-50 text-yellow-800
+                  dark:bg-yellow-900/30 dark:text-yellow-200 dark:border-yellow-700">
+        ⚠ Prayer times at this latitude and date are not well established.
+      </div>
       
       <div class="overflow-x-auto max-w-md mx-auto">
         <table class="min-w-full bg-white dark:bg-gray-800 shadow rounded-lg">
@@ -74,6 +82,7 @@
             <tr><td class="px-4 py-2 font-medium">Maghrib</td><td id="time-maghrib" class="px-4 py-2 text-right">--:--</td></tr>
             <tr><td class="px-4 py-2 font-medium">ʿIshāʾ</td><td id="time-isha" class="px-4 py-2 text-right">--:--</td></tr>
             <tr><td class="px-4 py-2 font-medium">Midnight</td><td id="time-midnight" class="px-4 py-2 text-right">--:--</td></tr>
+            <tr><td class="px-4 py-2 font-medium">Hijri Date (±1 Day)</td><td id="time-hijri" class="px-4 py-2 text-right">—</td></tr>
           </tbody>
         </table>
       </div>

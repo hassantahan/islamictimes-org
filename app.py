@@ -9,9 +9,14 @@ from zoneinfo import ZoneInfo
 from misc import hijri_to_gregorian
 import requests, math, sys, time, os, logging
 import subprocess, pathlib, tempfile
+import warnings
 
 OSM_NOMINATIM = "https://nominatim.openstreetmap.org/search"
 IPINFO        = "https://ipapi.co/json/"
+HIJRI_MONTH_NAMES = [
+    "Muḥarram","Ṣaffar","Rabīʿ al-Awwal","Rabīʿ al-Thānī","Jumādā al-Ūlā","Jumādā al-Thāniyah",
+    "Rajab","Shaʿbān","Ramaḍān","Shawwāl","Dhū al-Qaʿdah","Dhū al-Ḥijjah"
+]
 
 app = Flask(__name__)
 app.logger.setLevel(logging.INFO)
@@ -84,12 +89,18 @@ def upcoming_hijri():
         abort(400, "Missing date.")
     y, m, d = map(int, gdate.split("-"))
     h_year, h_month, h_day = gregorian_to_hijri(y, m, d)
-    # bump to next month, handle year rollover
-    h_month += 1
-    if h_month > 12:
-        h_month = 1
-        h_year += 1
-    return jsonify({"month": h_month, "year": h_year})
+
+    # 7-day delay: keep current month for days 1..7, else advance one month.
+    if h_day > 7:
+        h_month += 1
+        if h_month > 12:
+            h_month = 1
+            h_year += 1
+    return jsonify({
+        "month": h_month,
+        "month_name": HIJRI_MONTH_NAMES[h_month-1],
+        "year": h_year
+    })
 
 # ---------------------------------------------------------------------------#
 # Core Map Generator                                                         #
@@ -300,24 +311,42 @@ def prayer_times():
     if "lat" not in payload or "lon" not in payload:
         abort(400, "JSON must include lat & lon.")
 
-    loc = build_itlocation(payload)
-    times = loc.prayer_times()  # returns PrayerTimes dataclass
+    # times = loc.prayer_times()  # returns PrayerTimes dataclass
+    with warnings.catch_warnings(record=True) as wlist:
+        warnings.simplefilter("always", category=UserWarning)
+        loc = build_itlocation(payload)
+        times = loc.prayer_times()  # returns PrayerTimes dataclass
 
-    # build out each prayer, catching inf→message
-    out = {}
-    for key in ("fajr","sunrise","zuhr","asr","sunset","maghrib","isha","midnight"):
-        out[key] = _format_prayer(getattr(times, key))
+        # build out each prayer, catching inf→message
+        out = {}
+        for key in ("fajr","sunrise","zuhr","asr","sunset","maghrib","isha","midnight"):
+            out[key] = _format_prayer(getattr(times, key))
 
-    # method metadata
-    m = times.method
-    out["method"] = {
-        "name":           m.name,
-        "asr_type":       getattr(m, "asr_type", 0),
-        "midnight_type":  getattr(m, "midnight_type", 0),
-        "fajr_angle":     {"decimal": getattr(m, "fajr_angle", None)},
-        "maghrib_angle":  {"decimal": getattr(m, "maghrib_angle", None)},
-        "isha_angle":     {"decimal": getattr(m, "isha_angle", None)},
-    }
+        # method metadata
+        m = times.method
+        out["method"] = {
+            "name":           m.name,
+            "asr_type":       getattr(m, "asr_type", 0),
+            "midnight_type":  getattr(m, "midnight_type", 0),
+            "fajr_angle":     {"decimal": getattr(m, "fajr_angle", None)},
+            "maghrib_angle":  {"decimal": getattr(m, "maghrib_angle", None)},
+            "isha_angle":     {"decimal": getattr(m, "isha_angle", None)},
+        }
+
+        # Hijri date for the requested Gregorian date (local to the chosen tz)
+        hijri = loc.dates_times().hijri
+        out["hijri"] = {
+            "year": hijri.hijri_year, # type: ignore
+            "month": hijri.hijri_month, # type: ignore
+            "day": hijri.hijri_day, # type: ignore
+            "month_name": HIJRI_MONTH_NAMES[hijri.hijri_month-1] # type: ignore
+        }
+
+        out["warnings"] = []
+        for w in wlist or []:
+            msg = str(w.message)
+            if "Extreme latitude warning" in msg:
+                out["warnings"].append(msg)
 
     return jsonify(out)
 

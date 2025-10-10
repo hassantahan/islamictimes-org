@@ -57,6 +57,20 @@ function renderTable(json) {
         const cell = document.getElementById(`time-${key}`);
         if (cell) cell.textContent = fmtTime(obj.time);
     });
+
+    // warning banner
+    const alertEl = $("#lat-alert");
+    if (alertEl) {
+        const hasExtreme = Array.isArray(json.warnings) &&
+                           json.warnings.some(s => s.includes("Extreme latitude warning"));
+        if (hasExtreme) show(alertEl); else hide(alertEl);
+    }
+
+    // Hijri date row
+    if (json.hijri && $("#time-hijri")) {
+        const h = json.hijri;
+        $("#time-hijri").textContent = `${h.day} ${h.month_name} ${h.year}`;
+    }
     const methodDisplayElem = $("#method-display-bottom");
     if (methodDisplayElem) {
         methodDisplayElem.textContent = json.method.name;
@@ -226,7 +240,10 @@ $("#method").addEventListener("change", () => {
       $("#maghrib_angle").value = 0;
       $("#isha_angle").value    = 15;
     } else {
-      $("#midnight").value = $("#method").value === "JAFARI" ? "jafari" : "standard";
+      const m = $("#method").value;
+      // All Shia methods use Sunset→Fajr (Jaʿfarī) midnight
+      const isShia = (m === "JAFARI" || m === "TEHRAN");
+      $("#midnight").value = isShia ? "jafari" : "standard";
     }
 });
 

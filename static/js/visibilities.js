@@ -31,7 +31,7 @@ async function getUpcomingHijri() {
   const todayISO = new Date().toISOString().slice(0, 10);
   const res = await fetch(`/upcoming_hijri?date=${todayISO}`);
   if (!res.ok) throw new Error("Failed to fetch upcoming Hijri");
-  return res.json(); // { month: "<Name>", year: <Number> }
+  return res.json(); // { month: <1-12>, month_name: "<Name>", year: <Number> }
 }
 
 // ─── Build the “Month” & “Year” dropdowns and display the map ─────────────────
@@ -63,9 +63,9 @@ async function buildSelects() {
 
   // 4. Pre-select upcoming Hijri if present in our data
   try {
-    const { month: upM, year: upY } = await getUpcomingHijri();
-    if (availableMonths.has(upM)) monthSel.value = upM;
-    if (availableYears.includes(upY)) yearSel.value  = upY;
+    const { month_name: upName, year: upY } = await getUpcomingHijri();
+    if (availableMonths.has(upName)) monthSel.value = upName;
+    if (availableYears.includes(upY)) yearSel.value = upY;
   } catch {
     // fallback: leave first options
   }
