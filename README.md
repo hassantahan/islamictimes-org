@@ -1,101 +1,72 @@
 # Islamic Times Web App
 
-A minimal, sleek, and responsive Flask application that showcases the [`islamic_times`](https://github.com/hassantahan/islamic_times/) python library.
+Flask web app for prayer times and crescent visibility using the `islamic_times` Python package.
+
+## Current Architecture
+
+- `app.py`: thin entrypoint (`app = create_app()`).
+- `webapp/`: application package.
+- `webapp/routes/`: HTTP route modules (pages, prayer, maps, visibility).
+- `webapp/services/`: domain and integration logic.
+- `templates/`: server-rendered pages (`base.html`, `index.html`, `visibilities.html`).
+- `static/js/`: page scripts and shared UI utilities.
 
 ## Features
 
-- **Precise Prayer Time Calculations** with manual override via city/address search or GPS.
-- **Advanced settings** for selecting calculation methods (MWL, ISNA, Egypt, Makkah, Karachi, Tehran, Jafari) or custom angles.
+- Prayer-time calculation with method customization.
+- Hijri date display on prayer response.
+- Precomputed crescent visibility map browsing.
+- Visibility calculation for user-selected coordinates.
+- Unified JSON API error responses.
 
-## Future Improvements
+## Requirements
 
-- Display islamic date
-- Display astronomical details
-- Webpage for new moon crescent visibility maps 
-
-## Tech Stack
-
-- **Backend**: Python, Flask, `islamic_times`, `timezonefinder`, Gunicorn
-- **Frontend**: Vanilla JavaScript, TailwindCSS (via CDN), OpenStreetMap
-
-## Prerequisites
-
-- Python 3.9+
-- `pip` package manager
-- (Optional) `node` and `npm` if customizing Tailwind locally
+- Python `>=3.10`
+- `pip`
 
 ## Installation
 
-1. Clone the repository:
-    ```bash
-    git clone https://github.com/<your-username>/prayer-times.git
-    cd prayer-times
-    ```
-
-2. Create and activate a virtual environment:
-    ```bash
-    python3 -m venv venv
-    source venv/bin/activate  # Linux/macOS
-    venv\Scripts\activate   # Windows
-    ```
-
-3. Install Python dependencies:
-    ```bash
-    pip install -r requirements.txt
-    ```
-
-4. (Optional) Install front-end dependencies if you plan to build Tailwind locally:
-    ```bash
-    npm install
-    # then build your CSS, e.g.:
-    npm run build:css
-    ```
-
-## Running Locally
-
-Start the Flask development server:
-
 ```bash
-export FLASK_APP=app.py
-export FLASK_ENV=development
-flask run
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 ```
 
-Or simply:
+## Run Locally
 
 ```bash
 python app.py
 ```
 
-Then open your browser at `http://localhost:5000`.
+Then open `http://localhost:5000`.
+
+## API Endpoints
+
+- `GET /healthz`
+- `POST /prayer_times`
+- `GET /upcoming_hijri?date=YYYY-MM-DD`
+- `POST /vis_calc`
+- `GET /maps_index`
+
+Notes:
+- `POST /generate_map` is intentionally disabled (`410 Gone`), because this project now consumes precomputed maps from the external maps service.
+- `GET /__debug/gunicorn_args` is disabled unless `ENABLE_DEBUG_ROUTES=1`.
+
+## Tests
+
+```bash
+python -m unittest discover -s tests -p 'test_*.py'
+```
 
 ## Deployment
 
-### Using Gunicorn + Nginx
-
-```bash
-# Install Gunicorn if not already
-pip install gunicorn
-
-# Run with 3 workers binding to port 8000
-gunicorn --workers 3 --bind 0.0.0.0:8000 app:app
-```
-
-You can put an Nginx reverse proxy in front to serve static files and handle HTTPS.
-
-### Platform-as-a-Service
-
-- **Render.com**, **Heroku**, or **Railway.app**: Connect your GitHub repository, set the start command to `gunicorn app:app`, and deploy.
+The current Render deploy path is Docker-based (`render.yaml` + `Dockerfile`).
 
 ## Configuration
 
-- No additional environment variables are required for basic usage.
-- Geocoding uses OpenStreetMap’s public Nominatim API (rate-limited).
+Optional environment variables:
 
-## Contributing
-
-Contributions welcome! Please open issues or pull requests for bug fixes and enhancements.
-
-## License
-
-This project is licensed under the CC-BY-NC License. See `LICENSE` for details.
+- `MAPS_BASE` (default: `https://islamictimes-maps.onrender.com`)
+- `MAPS_INDEX_CACHE_TTL` (default: `3600` seconds)
+- `ENABLE_DEBUG_ROUTES` (`0` or `1`)
+- `ENABLE_LOCAL_MAP_GENERATION` (`0` or `1`, currently unused)

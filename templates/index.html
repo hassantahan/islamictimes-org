@@ -1,172 +1,144 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Prayer Times</title>
-  <!-- Enable Tailwind dark mode via class -->
-  <script>
-    // Ensure the global tailwind object exists before assigning config to it
-    window.tailwind = window.tailwind || {}; 
-    window.tailwind.config = {
-      darkMode: 'class', // This is correct
-      safelist: [
-        'dark:bg-gray-900',
-        'dark:bg-gray-800',
-        'dark:bg-gray-700',
-        'dark:text-gray-100',
-        'dark:text-gray-400',
-        'dark:border-gray-600'
-      ]
-    };
-  </script>
-  <script src="https://cdn.tailwindcss.com?plugins=typography"></script> <!-- CDN loads AFTER config -->
+{% extends "base.html" %}
+{% block title %}Prayer Times{% endblock %}
 
+{% block header_actions %}
+  <button id="open-adv" class="inline-flex h-9 w-9 items-center justify-center rounded-md border border-gray-200 text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700" type="button" aria-label="Open advanced settings">
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <path stroke-linecap="round" d="M5 6.5h14M5 12h14M5 17.5h14"/>
+      <circle cx="9" cy="6.5" r="1.5" fill="currentColor" stroke="none"/>
+      <circle cx="15" cy="12" r="1.5" fill="currentColor" stroke="none"/>
+      <circle cx="11" cy="17.5" r="1.5" fill="currentColor" stroke="none"/>
+    </svg>
+  </button>
+{% endblock %}
 
-  <link rel="apple-touch-icon" sizes="180x180" href="static/img/icons/apple-touch-icon.png">
-  <link rel="icon" type="image/png" sizes="32x32" href="static/img/icons/favicon-32x32.png">
-  <link rel="icon" type="image/png" sizes="16x16" href="static/img/icons/favicon-16x16.png">
-  <link rel="manifest" href="static/img/icons/site.webmanifest">
-  <style>
-    .spacer { margin: 1rem 0; }
-  </style>
-</head>
-<body class="bg-gray-100 text-gray-900 dark:bg-gray-900 dark:text-gray-100 flex flex-col min-h-screen">
-  <!-- Header -->
-  <header class="bg-white dark:bg-gray-800 shadow-sm">
-    <header class="bg-white dark:bg-gray-800 shadow-sm">
-      <div class="container mx-auto px-4 py-3 flex items-center justify-between">
-        <h1 class="text-lg font-semibold"><a href="/">Islamic Times</a></h1>
-    
-        <nav class="flex space-x-6 text-sm font-medium">
-          <a href="/"             class="hover:underline">Prayers</a>
-          <a href="/visibilities" class="hover:underline">Visibilities</a>
-          <a href="https://www.github.com/hassantahan/islamictimes-org" class="hover:underline" target="_blank" rel="noopener noreferrer">GitHub</a>
-        </nav>
-    
-        <div class="flex space-x-4">
-          <button id="theme-toggle" class="text-xl">🌞</button>
-          <button id="open-adv"     class="text-xl">⚙️</button>
-        </div>
-      </div>
-    </header>
-  </header>
+{% block content %}
+<section id="results" class="mb-8">
+  <div class="flex flex-col sm:flex-row justify-center items-center space-y-2 sm:space-y-0 sm:space-x-4 mb-4">
+    <h2 id="current-date-display" class="text-center text-lg font-medium"></h2>
+    <input type="date" id="date-picker" class="border rounded px-3 py-2 dark:bg-gray-700 dark:border-gray-600">
+  </div>
 
-  {% block content %}
-  <!-- <main class="flex-grow container mx-auto px-4 py-8 space-y-8"></main> -->
-  <div class="spacer"></div>
-    <!-- Results table (always visible) -->
-    <section id="results" class="mb-8">
-      <!-- Date display and picker -->
-      <div class="flex flex-col sm:flex-row justify-center items-center space-y-2 sm:space-y-0 sm:space-x-4 mb-4">
-        <!-- <h2 id="current-date-display" class="text-center text-lg font-medium"></h2> -->
-        <input type="date" id="date-picker" class="border rounded px-3 py-2 dark:bg-gray-700 dark:border-gray-600">
-      </div>
+  <div id="lat-alert"
+       class="hidden mx-auto mb-4 max-w-md text-center text-sm px-3 py-2 rounded border border-yellow-400 bg-yellow-50 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200 dark:border-yellow-700">
+    Prayer times at this latitude and date are not well established.
+  </div>
 
-      <!-- Extreme latitude alert -->
-      <div id="lat-alert"
-           class="hidden mx-auto mb-4 max-w-md text-center text-sm px-3 py-2 rounded border
-                  border-yellow-400 bg-yellow-50 text-yellow-800
-                  dark:bg-yellow-900/30 dark:text-yellow-200 dark:border-yellow-700">
-        ⚠ Prayer times at this latitude and date are not well established.
-      </div>
-      
-      <div class="overflow-x-auto max-w-md mx-auto">
-        <table class="min-w-full bg-white dark:bg-gray-800 shadow rounded-lg">
-          <tbody id="prayer-body" class="divide-y">
-            <tr><td class="px-4 py-2 font-medium">Fajr</td><td id="time-fajr" class="px-4 py-2 text-right">--:--</td></tr>
-            <tr><td class="px-4 py-2 font-medium">Sunrise</td><td id="time-sunrise" class="px-4 py-2 text-right">--:--</td></tr>
-            <tr><td class="px-4 py-2 font-medium">Ẓuhr</td><td id="time-zuhr" class="px-4 py-2 text-right">--:--</td></tr>
-            <tr><td class="px-4 py-2 font-medium">ʿAṣr</td><td id="time-asr" class="px-4 py-2 text-right">--:--</td></tr>
-            <tr><td class="px-4 py-2 font-medium">Sunset</td><td id="time-sunset" class="px-4 py-2 text-right">--:--</td></tr>
-            <tr><td class="px-4 py-2 font-medium">Maghrib</td><td id="time-maghrib" class="px-4 py-2 text-right">--:--</td></tr>
-            <tr><td class="px-4 py-2 font-medium">ʿIshāʾ</td><td id="time-isha" class="px-4 py-2 text-right">--:--</td></tr>
-            <tr><td class="px-4 py-2 font-medium">Midnight</td><td id="time-midnight" class="px-4 py-2 text-right">--:--</td></tr>
-            <tr><td class="px-4 py-2 font-medium">Hijri Date (±1 Day)</td><td id="time-hijri" class="px-4 py-2 text-right">—</td></tr>
-          </tbody>
-        </table>
-      </div>
-      <!-- Method name display (moved below table) -->
-      <h2 id="method-display-bottom" class="text-center text-sm text-gray-600 dark:text-gray-400 mt-4"></h2>
-    </section>
+  <div class="overflow-x-auto max-w-md mx-auto">
+    <table class="min-w-full bg-white dark:bg-gray-800 shadow rounded-lg">
+      <tbody id="prayer-body" class="divide-y">
+        <tr><td class="px-4 py-2 font-medium">Fajr</td><td id="time-fajr" class="px-4 py-2 text-right">--:--</td></tr>
+        <tr><td class="px-4 py-2 font-medium">Sunrise</td><td id="time-sunrise" class="px-4 py-2 text-right">--:--</td></tr>
+        <tr><td class="px-4 py-2 font-medium">Zuhr</td><td id="time-zuhr" class="px-4 py-2 text-right">--:--</td></tr>
+        <tr><td class="px-4 py-2 font-medium">Asr</td><td id="time-asr" class="px-4 py-2 text-right">--:--</td></tr>
+        <tr><td class="px-4 py-2 font-medium">Sunset</td><td id="time-sunset" class="px-4 py-2 text-right">--:--</td></tr>
+        <tr><td class="px-4 py-2 font-medium">Maghrib</td><td id="time-maghrib" class="px-4 py-2 text-right">--:--</td></tr>
+        <tr><td class="px-4 py-2 font-medium">Isha</td><td id="time-isha" class="px-4 py-2 text-right">--:--</td></tr>
+        <tr><td class="px-4 py-2 font-medium">Midnight</td><td id="time-midnight" class="px-4 py-2 text-right">--:--</td></tr>
+        <tr><td class="px-4 py-2 font-medium">Hijri Date (±1 Day)</td><td id="time-hijri" class="px-4 py-2 text-right">—</td></tr>
+      </tbody>
+    </table>
+  </div>
 
-    <!-- Location  Map -->
-    <section class="max-w-md mx-auto space-y-4">
-      <form id="manual-form" class="space-y-2">
-        <input type="text" id="city" placeholder="City / Address" autocomplete="off"
-               class="w-full border rounded px-3 py-2 dark:bg-gray-700 dark:border-gray-600"/>
-        <ul id="autocomplete-suggestions"
-            class="border bg-white dark:bg-gray-700 dark:border-gray-600 rounded hidden max-h-40 overflow-y-auto"></ul>
-        <div class="flex space-x-4">
-          <input type="number" id="lat" min="-90" max="90" step="0.000001"
-                 placeholder="Latitude"
-                 class="flex-1 border rounded px-3 py-2 dark:bg-gray-700 dark:border-gray-600"/>
-          <input type="number" id="lon" min="-180" max="180" step="0.000001"
-                 placeholder="Longitude"
-                 class="flex-1 border rounded px-3 py-2 dark:bg-gray-700 dark:border-gray-600"/>
-        </div>
-        <button type="submit" class="bg-emerald-600 text-white py-2 w-full rounded-lg">
-          Use Manual Location
-        </button>
-      </form>
-      <button type="button" id="use-gps" class="w-full bg-blue-500 text-white py-2 rounded-lg">
-        Use Precise GPS
-      </button>
-      <div id="map-container" class="w-full h-64 bg-gray-300 dark:bg-gray-700 rounded-lg overflow-hidden">
-        <iframe id="map" class="w-full h-full" src="" frameborder="0" scrolling="no" loading="lazy"></iframe>
-      </div>
-    </section>
-
-    <!-- Spinner -->
-    <div id="spinner" class="fixed inset-0 flex items-center justify-center bg-white/60 dark:bg-black/60 hidden">
-      <img src="/static/img/spinner.svg"  class="w-16 h-16 animate-spin" alt="Loading…"/>
+  <div id="qibla-card" class="max-w-md mx-auto mt-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 shadow">
+    <div class="flex items-center justify-between">
+      <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Qibla Direction</h3>
+      <span id="qibla-cardinal" class="text-xs font-medium px-2 py-1 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-200">—</span>
     </div>
-  </main>
-  {% endblock %}
 
-  <!-- Advanced Settings Modal -->
-  <div id="adv-modal" class="fixed inset-0 flex items-center justify-center bg-black/50 hidden">
-    <div class="bg-white dark:bg-gray-800 rounded-lg max-w-3xl w-full p-6 relative">
-      <button type="button" id="close-adv" class="absolute top-3 right-3 text-gray-500">✖️</button>
-      <h3 class="text-lg font-medium mb-4">Advanced Settings</h3>
-      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <select id="method" class="border rounded px-3 py-2 dark:bg-gray-700 dark:border-gray-600">
-            <option value="JAFARI">Shia Ithna Ashari, Leva Institute (Jafari)</option>
-            <option value="TEHRAN">University of Tehran (Tehran)</option>
-            <option value="ISNA">Islamic Society of North America (ISNA)</option>
-          <option value="MWL">Muslim World League (MWL)</option>
-          <option value="MAKKAH">Umm al-Qura University (Makkah)</option>
-          <option value="EGYPT">Egyptian General Authority (Egypt)</option>
-          <option value="KARACHI">University of Islamic Sciences (Karachi)</option>
-          <option value="CUSTOM">Custom Angles</option>
-        </select>
-        <select id="asr" class="border rounded px-3 py-2 dark:bg-gray-700 dark:border-gray-600">
-          <option value="standard">ʿAṣr: Standard</option>
-          <option value="hanafi">ʿAṣr: Ḥanafī</option>
-        </select>
-        <select id="midnight" class="border rounded px-3 py-2 dark:bg-gray-700 dark:border-gray-600">
-          <option value="standard">Midnight: Sunset–Sunrise</option>
-          <option value="jafari">Midnight: Sunset–Fajr (Jaʿfarī)</option>
-        </select>
-        <input id="fajr_angle" type="number" min="0" max="90" step="0.1"
-               placeholder="Fajr angle°"
-               class="border rounded px-3 py-2 hidden dark:bg-gray-700 dark:border-gray-600"/>
-        <input id="maghrib_angle" type="number" min="0" max="90" step="0.1"
-               placeholder="Maghrib angle°"
-               class="border rounded px-3 py-2 hidden dark:bg-gray-700 dark:border-gray-600"/>
-        <input id="isha_angle" type="number" min="0" max="90" step="0.1"
-               placeholder="Isha angle°"
-               class="border rounded px-3 py-2 hidden dark:bg-gray-700 dark:border-gray-600"/>
+    <div class="mt-3 flex items-center gap-4">
+      <div class="relative h-20 w-20 rounded-full border-2 border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50">
+        <div class="absolute inset-x-0 top-1 text-center text-[10px] font-semibold text-gray-500 dark:text-gray-400">N</div>
+        <div id="qibla-needle" class="absolute left-1/2 top-1/2 h-8 w-1 -translate-x-1/2 -translate-y-full origin-bottom rounded bg-emerald-600 transition-transform duration-300"></div>
+        <div class="absolute left-1/2 top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-emerald-600"></div>
       </div>
-      <div class="mt-6 text-right">
-        <button type="button" id="compute-btn" class="bg-blue-600 text-white py-2 px-6 rounded-lg">
-          Compute
-        </button>
+
+      <div class="space-y-1 text-sm">
+        <div class="text-gray-600 dark:text-gray-300">
+          Heading:
+          <span id="qibla-angle" class="font-medium text-gray-900 dark:text-gray-100">—</span>
+        </div>
+        <div class="text-gray-600 dark:text-gray-300">
+          Distance:
+          <span id="qibla-distance" class="font-medium text-gray-900 dark:text-gray-100">—</span>
+        </div>
       </div>
     </div>
   </div>
 
-  <footer class="text-center text-xs py-4 text-gray-500 dark:text-gray-400">COPYRIGHT © 2025 ISLAMICTIMES.ORG. ALL RIGHTS RESERVED.</footer>
-  <script src="/static/js/main.js" type="module"></script>
-</body>
-</html>
+  <h3 id="method-display-bottom" class="text-center text-sm text-gray-600 dark:text-gray-400 mt-4"></h3>
+</section>
+
+<section class="max-w-md mx-auto space-y-4">
+  <form id="manual-form" class="space-y-2">
+    <input type="text" id="city" placeholder="City / Address" autocomplete="off"
+           class="w-full border rounded px-3 py-2 dark:bg-gray-700 dark:border-gray-600"/>
+    <ul id="autocomplete-suggestions"
+        class="border bg-white dark:bg-gray-700 dark:border-gray-600 rounded hidden max-h-40 overflow-y-auto"></ul>
+
+    <div class="flex space-x-4">
+      <input type="number" id="lat" min="-90" max="90" step="0.000001" placeholder="Latitude"
+             class="flex-1 border rounded px-3 py-2 dark:bg-gray-700 dark:border-gray-600"/>
+      <input type="number" id="lon" min="-180" max="180" step="0.000001" placeholder="Longitude"
+             class="flex-1 border rounded px-3 py-2 dark:bg-gray-700 dark:border-gray-600"/>
+    </div>
+
+    <button type="submit" class="bg-emerald-600 text-white py-2 w-full rounded-lg">Use Manual Location</button>
+  </form>
+
+  <button type="button" id="use-gps" class="w-full bg-blue-500 text-white py-2 rounded-lg">Use Precise GPS</button>
+
+  <div id="map-container" class="w-full h-64 bg-gray-300 dark:bg-gray-700 rounded-lg overflow-hidden">
+    <iframe id="map" class="w-full h-full" src="" frameborder="0" scrolling="no" loading="lazy"></iframe>
+  </div>
+</section>
+
+<div id="spinner" class="fixed inset-0 flex items-center justify-center bg-white/60 dark:bg-black/60 hidden">
+  <img src="{{ url_for('static', filename='img/spinner.svg') }}" class="w-16 h-16 animate-spin" alt="Loading"/>
+</div>
+
+<div id="adv-modal" class="fixed inset-0 flex items-center justify-center bg-black/50 hidden">
+  <div class="bg-white dark:bg-gray-800 rounded-lg max-w-3xl w-full p-6 relative">
+    <button type="button" id="close-adv" class="absolute top-3 right-3 text-gray-500">✖</button>
+    <h3 class="text-lg font-medium mb-4">Advanced Settings</h3>
+
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <select id="method" class="border rounded px-3 py-2 dark:bg-gray-700 dark:border-gray-600">
+        <option value="JAFARI">Shia Ithna Ashari, Leva Institute (Jafari)</option>
+        <option value="TEHRAN">University of Tehran (Tehran)</option>
+        <option value="ISNA">Islamic Society of North America (ISNA)</option>
+        <option value="MWL">Muslim World League (MWL)</option>
+        <option value="MAKKAH">Umm al-Qura University (Makkah)</option>
+        <option value="EGYPT">Egyptian General Authority (Egypt)</option>
+        <option value="KARACHI">University of Islamic Sciences (Karachi)</option>
+        <option value="CUSTOM">Custom Angles</option>
+      </select>
+
+      <select id="asr" class="border rounded px-3 py-2 dark:bg-gray-700 dark:border-gray-600">
+        <option value="standard">Asr: Standard</option>
+        <option value="hanafi">Asr: Hanafi</option>
+      </select>
+
+      <select id="midnight" class="border rounded px-3 py-2 dark:bg-gray-700 dark:border-gray-600">
+        <option value="standard">Midnight: Sunset–Sunrise</option>
+        <option value="jafari">Midnight: Sunset–Fajr (Jafari)</option>
+      </select>
+
+      <input id="fajr_angle" type="number" min="0" max="90" step="0.1" placeholder="Fajr angle°"
+             class="border rounded px-3 py-2 hidden dark:bg-gray-700 dark:border-gray-600"/>
+      <input id="maghrib_angle" type="number" min="0" max="90" step="0.1" placeholder="Maghrib angle°"
+             class="border rounded px-3 py-2 hidden dark:bg-gray-700 dark:border-gray-600"/>
+      <input id="isha_angle" type="number" min="0" max="90" step="0.1" placeholder="Isha angle°"
+             class="border rounded px-3 py-2 hidden dark:bg-gray-700 dark:border-gray-600"/>
+    </div>
+
+    <div class="mt-6 text-right">
+      <button type="button" id="compute-btn" class="bg-blue-600 text-white py-2 px-6 rounded-lg">Compute</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script type="module" src="{{ url_for('static', filename='js/main.js', v='20260228-4') }}"></script>
+{% endblock %}

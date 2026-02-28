@@ -16,6 +16,7 @@ node_modules/
 # IDEs / editors
 .vscode/
 .idea/
+docs/
 
 # OS
 .DS_Store

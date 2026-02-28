@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>{% block title %}Islamic Times{% endblock %}</title>
+
+  <script>
+    (function () {
+      try {
+        const stored = localStorage.getItem("theme");
+        const normalized = stored === "dark" || stored === "light" ? stored : null;
+        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        const useDark = normalized ? normalized === "dark" : prefersDark;
+        const root = document.documentElement;
+        root.classList.toggle("dark", useDark);
+        root.setAttribute("data-theme", useDark ? "dark" : "light");
+      } catch (_) {
+        // Ignore storage access issues; default theme classes remain usable.
+      }
+    })();
+  </script>
+
+  <script>
+    (function () {
+      const tw = window.tailwind || {};
+      tw.config = {
+        darkMode: "class",
+        safelist: [
+          "dark:bg-gray-900",
+          "dark:bg-gray-800",
+          "dark:bg-gray-700",
+          "dark:text-gray-100",
+          "dark:text-gray-400",
+          "dark:border-gray-600"
+        ]
+      };
+      window.tailwind = tw;
+    })();
+  </script>
+  <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='img/icons/apple-touch-icon.png') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='img/icons/favicon-32x32.png') }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='img/icons/favicon-16x16.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='img/icons/site.webmanifest') }}">
+</head>
+<body class="bg-gray-100 text-gray-900 dark:bg-gray-900 dark:text-gray-100 flex flex-col min-h-screen">
+  <header class="bg-white dark:bg-gray-800 shadow-sm">
+    <div class="container mx-auto px-4 py-3 flex items-center justify-between">
+      <h1 class="text-lg font-semibold"><a href="/">Islamic Times</a></h1>
+
+      <nav class="flex space-x-6 text-sm font-medium">
+        <a href="/" class="hover:underline">Prayers</a>
+        <a href="/visibilities" class="hover:underline">Visibilities</a>
+        <a href="https://www.github.com/hassantahan/islamictimes-org" class="hover:underline" target="_blank" rel="noopener noreferrer">GitHub</a>
+      </nav>
+
+      <div class="flex items-center space-x-3">
+        <button id="theme-toggle" class="inline-flex h-9 w-9 items-center justify-center rounded-md border border-gray-200 text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700" type="button" aria-label="Toggle dark mode">
+          <svg id="theme-icon-moon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M21.75 15.002A9.75 9.75 0 0 1 9 2.25a.75.75 0 0 0-.926.926 8.25 8.25 0 1 0 11.75 11.75.75.75 0 0 0 .926-.924Z"/>
+          </svg>
+          <svg id="theme-icon-sun" xmlns="http://www.w3.org/2000/svg" class="hidden h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
+            <circle cx="12" cy="12" r="3.75"></circle>
+            <path stroke-linecap="round" d="M12 2.75v2.25M12 19v2.25M5.46 5.46l1.59 1.59M16.95 16.95l1.59 1.59M2.75 12H5M19 12h2.25M5.46 18.54l1.59-1.59M16.95 7.05l1.59-1.59"/>
+          </svg>
+        </button>
+        {% block header_actions %}{% endblock %}
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-grow container mx-auto px-4 py-6 space-y-6">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="text-center text-xs py-4 text-gray-500 dark:text-gray-400">
+    COPYRIGHT © 2025 ISLAMICTIMES.ORG. ALL RIGHTS RESERVED.
+  </footer>
+
+  <script type="module" src="{{ url_for('static', filename='js/shared/theme.js', v='20260228-4') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

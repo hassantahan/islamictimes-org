@@ -1,47 +1,26 @@
-{% extends "index.html" %}
+{% extends "base.html" %}
+{% block title %}Crescent Visibilities{% endblock %}
+
 {% block content %}
-
-<style>
-  .spacer { margin: 1rem 0; }
-</style>
-
-<div class="spacer"></div>
-
-<!-- Month + Year dropdowns ------------------------------------------------->
 <section class="max-w-3xl mx-auto mb-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
-  <!-- Month dropdown -->
   <div>
     <label for="month-select" class="block text-sm font-medium mb-1">Month</label>
-    <select id="month-select"
-            class="w-full border rounded px-3 py-2 dark:bg-gray-700 dark:border-gray-600">
-      <!-- options injected by visibilities.js -->
-    </select>
+    <select id="month-select" class="w-full border rounded px-3 py-2 dark:bg-gray-700 dark:border-gray-600"></select>
   </div>
-  <!-- Year dropdown -->
+
   <div>
     <label for="year-select" class="block text-sm font-medium mb-1">Year</label>
-    <select id="year-select"
-            class="w-full border rounded px-3 py-2 dark:bg-gray-700 dark:border-gray-600">
-      <!-- options injected by visibilities.js -->
-    </select>
+    <select id="year-select" class="w-full border rounded px-3 py-2 dark:bg-gray-700 dark:border-gray-600"></select>
   </div>
 </section>
 
-<!-- Map display ------------------------------------------------------------->
 <section class="max-w-6xl mx-auto">
-  <img id="map-output"
-       class="w-full border rounded-lg shadow dark:border-gray-600"
-       src=""
-       alt="Visibility map will appear here">
+  <img id="map-output" class="w-full border rounded-lg shadow dark:border-gray-600" src="" alt="Visibility map will appear here">
 </section>
 
-<div class="spacer"></div>
-
-<!-- Crescent-visibility calculator ----------------------------------------->
 <section class="max-w-3xl mx-auto space-y-4">
   <h2 class="text-lg font-semibold mb-2">Crescent Visibility at Your Location</h2>
 
-  <!-- Results table -------------------------------------------------------->
   <div class="overflow-x-auto">
     <table id="vis-table" class="min-w-full bg-white dark:bg-gray-800 shadow rounded-lg">
       <thead>
@@ -52,55 +31,37 @@
           <th class="px-4 py-2 text-left">Description</th>
         </tr>
       </thead>
-      <tbody id="vis-body" class="divide-y">
-        <!-- populated by JS -->
-      </tbody>
+      <tbody id="vis-body" class="divide-y"></tbody>
     </table>
   </div>
 
-  <!-- Criterion note (below the table) --------------------------------------->
-  <div id="vis-criterion" class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-    <!-- “Criterion: Yallop” will be injected here via JS -->
-  </div>
+  <div id="vis-criterion" class="mt-2 text-sm text-gray-600 dark:text-gray-400"></div>
 
-  <!-- Search box ----------------------------------------------------------->
   <input type="text" id="city" placeholder="City / Address" autocomplete="off"
          class="w-full border rounded px-3 py-2 dark:bg-gray-700 dark:border-gray-600"/>
   <ul id="autocomplete-suggestions"
       class="border bg-white dark:bg-gray-700 dark:border-gray-600 rounded hidden max-h-40 overflow-y-auto"></ul>
 
-  <!-- Manual lat/lon ------------------------------------------------------->
   <div class="flex space-x-4">
-    <input type="number" id="lat"  placeholder="Latitude"
-           class="flex-1 border rounded px-3 py-2 dark:bg-gray-700 dark:border-gray-600">
-    <input type="number" id="lon"  placeholder="Longitude"
-           class="flex-1 border rounded px-3 py-2 dark:bg-gray-700 dark:border-gray-600">
+    <input type="number" id="lat" min="-90" max="90" step="0.000001" placeholder="Latitude" class="flex-1 border rounded px-3 py-2 dark:bg-gray-700 dark:border-gray-600">
+    <input type="number" id="lon" min="-180" max="180" step="0.000001" placeholder="Longitude" class="flex-1 border rounded px-3 py-2 dark:bg-gray-700 dark:border-gray-600">
   </div>
 
-  <!-- Buttons -------------------------------------------------------------->
   <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-    <button id="use-gps"
-            class="w-full bg-blue-500 text-white py-2 rounded-lg">
-      Use Precise GPS
-    </button>
-    <button id="use-manual"
-            class="w-full bg-emerald-600 text-white py-2 rounded-lg">
-      Use Manual Location
-    </button>
+    <button id="use-gps" class="w-full bg-blue-500 text-white py-2 rounded-lg" type="button">Use Precise GPS</button>
+    <button id="use-manual" class="w-full bg-emerald-600 text-white py-2 rounded-lg" type="button">Use Manual Location</button>
   </div>
 
-  <!-- Small map ------------------------------------------------------------>
   <div id="map-container" class="w-full h-48 bg-gray-300 dark:bg-gray-700 rounded-lg overflow-hidden">
     <iframe id="map" class="w-full h-full" src="" frameborder="0" scrolling="no" loading="lazy"></iframe>
   </div>
-  
 </section>
 
-<!-- Spinner overlay --------------------------------------------------------->
-<div id="map-spinner"
-     class="fixed inset-0 flex items-center justify-center bg-white/70 dark:bg-black/70 hidden">
-  <img src="/static/img/spinner.svg" class="w-20 h-20 animate-spin" alt="Loading…">
+<div id="map-spinner" class="fixed inset-0 flex items-center justify-center bg-white/70 dark:bg-black/70 hidden">
+  <img src="{{ url_for('static', filename='img/spinner.svg') }}" class="w-20 h-20 animate-spin" alt="Loading">
 </div>
+{% endblock %}
 
-<script type="module" src="/static/js/visibilities.js"></script>
+{% block scripts %}
+<script type="module" src="{{ url_for('static', filename='js/visibilities.js', v='20260228-4') }}"></script>
 {% endblock %}
