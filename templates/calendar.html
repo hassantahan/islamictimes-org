@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% from "_forms.html" import location_fields, method_options, asr_options %}
+{% block title %}Prayer Calendar · Islamic Times{% endblock %}
+
+{% block content %}
+<section class="page-heading calendar-heading">
+  <div><h1>Prayer Calendar</h1><p>Build a local timetable, apply your mosque’s offsets, and take it with you.</p></div>
+</section>
+
+<div class="calendar-grid">
+  <form class="panel control-panel" id="calendar-form">
+    <h2>Timetable settings</h2>
+    {{ location_fields() }}
+    <div class="fields two-fields">
+      <label>Start date <input id="calendar-start" type="date" min="1900-01-01" max="2100-12-31" required></label>
+      <label>End date <input id="calendar-end" type="date" min="1900-01-01" max="2100-12-31" required></label>
+    </div>
+    <label>Mosque profile <select id="profile-select"><option value="">No saved profile</option></select></label>
+    <label>Calculation method <select id="calendar-method">{{ method_options() }}</select></label>
+    <label>ʿAṣr calculation <select id="calendar-asr">{{ asr_options() }}</select></label>
+
+    <details class="coordinate-fields" id="profile-editor">
+      <summary>Mosque profile &amp; offsets</summary>
+      <label>Profile name <input type="text" maxlength="60" id="profile-name" autocomplete="off" placeholder="e.g. My local mosque"></label>
+      <p class="muted small">Enter signed whole minutes. Positive offsets move a prayer later.</p>
+      <div class="fields offset-fields">
+        {% for key, label in [('fajr', 'Fajr'), ('zuhr', 'Ẓuhr'), ('asr', 'ʿAṣr'), ('maghrib', 'Maghrib'), ('isha', 'ʿIshāʾ')] %}
+        <label>{{ label }} <input type="number" min="-180" max="180" step="1" value="0" data-offset="{{ key }}"></label>
+        {% endfor %}
+      </div>
+      <div class="button-row">
+        <button class="button button-subtle" id="save-profile" type="button">Save profile</button>
+        <button class="text-button" id="delete-profile" type="button" hidden>Remove profile</button>
+      </div>
+      <p class="small muted" id="profile-status" role="status"></p>
+    </details>
+    <button class="button button-primary" type="submit" id="generate-calendar">Generate timetable</button>
+  </form>
+
+  <section class="panel calendar-results" id="calendar-results" aria-labelledby="calendar-results-title">
+    <div class="panel-heading">
+      <div><h2 id="calendar-results-title">Your timetable</h2><p id="calendar-meta" class="muted small"></p></div>
+      <div class="button-row">
+        <button class="button button-subtle" type="button" data-download="ics" disabled>Download .ics</button>
+        <button class="button button-subtle" type="button" data-download="csv" disabled>Download CSV</button>
+      </div>
+    </div>
+    <p id="calendar-status" class="small status" role="status">Choose your location and dates, then generate a timetable.</p>
+    <p class="small muted scroll-hint" id="calendar-scroll-hint" hidden>Scroll across the timetable to see all five prayers.</p>
+    <div class="table-scroll" id="calendar-table-wrapper" hidden tabindex="0" role="region" aria-label="Scrollable prayer calendar">
+      <table id="calendar-table" class="calendar-table">
+        <thead><tr><th scope="col">Date</th><th scope="col">Fajr</th><th scope="col">Ẓuhr</th><th scope="col">ʿAṣr</th><th scope="col">Maghrib</th><th scope="col">ʿIshāʾ</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <p id="calendar-legend" class="muted small" hidden>Times are local to the selected location. † Estimated time. −1d / +1d indicates a different local date. A dash means the prayer time is unavailable.</p>
+    <p class="muted small calendar-footnote">The .ics file contains daily prayer events. CSV also includes Hijri dates, sunrise, sunset, and midnight. Calculated Hijri dates may differ from local observance.</p>
+  </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script type="module" src="{{ url_for('static', filename='js/calendar.js') }}"></script>
+{% endblock %}

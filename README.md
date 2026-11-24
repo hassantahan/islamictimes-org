@@ -1,72 +1,59 @@
 # Islamic Times Web App
 
-Flask web app for prayer times and crescent visibility using the `islamic_times` Python package.
+Flask web app for prayer times, downloadable timetables, Qibla direction, and crescent visibility using the `islamic_times` Python package.
 
-## Current Architecture
+## Run locally
 
-- `app.py`: thin entrypoint (`app = create_app()`).
-- `webapp/`: application package.
-- `webapp/routes/`: HTTP route modules (pages, prayer, maps, visibility).
-- `webapp/services/`: domain and integration logic.
-- `templates/`: server-rendered pages (`base.html`, `index.html`, `visibilities.html`).
-- `static/js/`: page scripts and shared UI utilities.
-
-## Features
-
-- Prayer-time calculation with method customization.
-- Hijri date display on prayer response.
-- Precomputed crescent visibility map browsing.
-- Visibility calculation for user-selected coordinates.
-- Unified JSON API error responses.
-
-## Requirements
-
-- Python `>=3.10`
-- `pip`
-
-## Installation
+Use Python 3.11 or later.
 
 ```bash
-python3 -m venv .venv
+python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-```
-
-## Run Locally
-
-```bash
 python app.py
 ```
 
-Then open `http://localhost:5000`.
+On Windows, activate the environment with `.venv\Scripts\Activate.ps1`. Open `http://localhost:5000`.
 
-## API Endpoints
+Until v3.2.0 is published, install the v3.2.0 wheel for your platform or the source archive from the library worktree before running `pip install -r requirements.txt`. A source installation needs a C compiler. The Render Docker deployment resolves the library from PyPI.
+
+## Prayer Calendar and privacy
+
+- Choose a city, coordinates, or device location. Device location requires a browser permission prompt and a secure context.
+- A mosque profile holds its name, calculation method, Asr convention, and signed minute offsets for the five daily prayers. A timetable can cover up to 366 days.
+- iCalendar includes the five daily prayer events. CSV also includes solar markers, a calculated Hijri date, local offsets, and estimated-time indicators.
+- Preferences are off by default and live in browser storage when enabled. They cover appearance, clock format, a selected city, prayer settings, and profiles. The preference feature uses no cookies, account, or server-side profile store. Users can turn it off or clear their data from the Preferences dialog.
+- Coordinates are submitted in POST bodies only when the user requests a location calculation. The default daily schedule uses a clearly labeled Toronto example. Selecting an OpenStreetMap link opens that external website, and the Crescent Visibility page loads public images from the maps host.
+- City selection uses a local list. Other locations can be entered as coordinates or set with device location.
+
+## Application structure
+
+- `app.py` starts Flask. `webapp/routes/` defines the endpoints and `webapp/services/` connects them to the calculations and maps.
+- `templates/` holds the server-rendered pages. `static/` holds the shared styles and page scripts.
+
+### API endpoints
 
 - `GET /healthz`
 - `POST /prayer_times`
+- `POST /calendar/schedule`
+- `POST /calendar/export/ics`
+- `POST /calendar/export/csv`
 - `GET /upcoming_hijri?date=YYYY-MM-DD`
 - `POST /vis_calc`
 - `GET /maps_index`
 
-Notes:
-- `POST /generate_map` is intentionally disabled (`410 Gone`), because this project now consumes precomputed maps from the external maps service.
-- `GET /__debug/gunicorn_args` is disabled unless `ENABLE_DEBUG_ROUTES=1`.
+The calendar endpoints read the same JSON object. Required keys are `lat`, `lon`, `start`, and `end`. Optional keys include `method`, `asr_type` (0 for standard, 1 for Hanafi), and `profile` with `name` and `offset_minutes`. The preview returns JSON and the downloads return attachments. `POST /generate_map` is retired because the site uses precomputed maps.
 
-## Tests
+### Tests
 
 ```bash
 python -m unittest discover -s tests -p 'test_*.py'
 ```
 
-## Deployment
+### Deployment
 
-The current Render deploy path is Docker-based (`render.yaml` + `Dockerfile`).
+The existing Render deployment uses `render.yaml` and `Dockerfile`.
 
-## Configuration
-
-Optional environment variables:
-
-- `MAPS_BASE` (default: `https://islamictimes-maps.onrender.com`)
-- `MAPS_INDEX_CACHE_TTL` (default: `3600` seconds)
-- `ENABLE_DEBUG_ROUTES` (`0` or `1`)
-- `ENABLE_LOCAL_MAP_GENERATION` (`0` or `1`, currently unused)
+- `MAPS_BASE` defaults to `https://islamictimes-maps.onrender.com`
+- `MAPS_INDEX_CACHE_TTL` defaults to 3600 seconds
+- `ENABLE_DEBUG_ROUTES=1` enables `GET /__debug/gunicorn_args`

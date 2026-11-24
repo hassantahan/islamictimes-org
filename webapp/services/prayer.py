@@ -3,7 +3,6 @@ from __future__ import annotations
 import math
 import warnings
 from datetime import datetime
-from functools import lru_cache
 from zoneinfo import ZoneInfo
 
 from islamic_times.islamic_times import ITLocation
@@ -17,7 +16,6 @@ from webapp.validators import parse_float, parse_iso_date
 _tf = TimezoneFinder()
 
 
-@lru_cache(maxsize=256)
 def lookup_tz(lat: float, lon: float) -> ZoneInfo:
     tz_name = _tf.timezone_at(lat=lat, lng=lon)
     return ZoneInfo(tz_name or "UTC")
@@ -42,7 +40,7 @@ def _optional_angle(value, field_name: str) -> float | None:
     except (TypeError, ValueError):
         raise ApiError(f"Field '{field_name}' must be a number.") from None
 
-    if angle < 0 or angle > 90:
+    if not 0 <= angle <= 90:
         raise ApiError(f"Field '{field_name}' must be between 0 and 90.")
     return angle
 
@@ -115,7 +113,10 @@ def _build_itlocation(payload: dict) -> ITLocation:
 
     method_name = str(method_payload.get("name", "")).upper().strip()
     asr_type = _optional_binary_int(method_payload.get("asr_type"), "method.asr_type", default=0)
-    midnight_type = _optional_binary_int(method_payload.get("midnight_type"), "method.midnight_type", default=0)
+    # An explicit preset selection uses the method's midnight convention.
+    # Existing callers omitting this key still receive sunset-to-sunrise.
+    midnight_raw = method_payload.get("midnight_type")
+    midnight_type = None if midnight_raw == "preset" else _optional_binary_int(midnight_raw, "method.midnight_type")
 
     try:
         if method_name and method_name not in ("CUSTOM",):
@@ -134,7 +135,8 @@ def _build_itlocation(payload: dict) -> ITLocation:
 
             loc.set_asr_type(asr_type)
         # User override should apply regardless of preset/custom method path.
-        loc.set_midnight_type(midnight_type)
+        if midnight_type is not None:
+            loc.set_midnight_type(midnight_type)
     except (TypeError, ValueError) as exc:
         raise ApiError(str(exc), details={"field": "method"}) from exc
 
@@ -172,6 +174,9 @@ def build_prayer_times_response(payload: dict) -> dict:
         "isha_angle": {"decimal": _angle_decimal(getattr(method, "isha_angle", None))},
     }
 
+    date_info = loc.observer_dateinfo
+    out["date"] = date_info.date.date().isoformat()
+    out["timezone"] = getattr(date_info.date.tzinfo, "key", "UTC")
     hijri = loc.dates_times().hijri
     h_month = int(hijri.hijri_month)
     out["hijri"] = {

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from math import isfinite
 
 from webapp.errors import ApiError
 
@@ -18,9 +19,11 @@ def parse_float(payload: dict, key: str, *, minimum: float | None = None, maximu
     value = payload.get(key)
     try:
         num = float(value)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         raise ApiError(f"Field '{key}' must be a number.") from None
 
+    if not isfinite(num):
+        raise ApiError(f"Field '{key}' must be a finite number.")
     if minimum is not None and num < minimum:
         raise ApiError(f"Field '{key}' must be >= {minimum}.")
     if maximum is not None and num > maximum:
@@ -37,7 +40,6 @@ def parse_int(payload: dict, key: str, *, minimum: int | None = None, maximum: i
         num = int(value)
     except (TypeError, ValueError):
         raise ApiError(f"Field '{key}' must be an integer.") from None
-
     if minimum is not None and num < minimum:
         raise ApiError(f"Field '{key}' must be >= {minimum}.")
     if maximum is not None and num > maximum:

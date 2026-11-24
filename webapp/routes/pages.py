@@ -13,9 +13,14 @@ def index():
     return render_template("index.html")
 
 
+@pages_bp.get("/calendar")
+def calendar_page():
+    return render_template("calendar.html")
+
+
 @pages_bp.get("/visibilities")
 def visibilities_page():
-    return render_template("visibilities.html")
+    return render_template("visibilities.html", maps_base=current_app.config["MAPS_BASE"])
 
 
 @pages_bp.get("/healthz")
