@@ -22,8 +22,8 @@ Until v3.2.0 is published, install the v3.2.0 wheel for your platform or the sou
 - Choose a city, coordinates, or device location. Device location requires a browser permission prompt and a secure context.
 - Jaʿfarī (Leva Institute) is the default prayer calculation method. Choose Custom angles to override the Fajr, Maghrib, or Isha angles. Blank fields use the Jaʿfarī angle. A mosque profile holds its name, calculation method, optional custom angles, Asr convention, and signed minute offsets for the five daily prayers. A timetable can cover up to 366 days.
 - iCalendar includes the five daily prayer events. CSV also includes solar markers, a calculated Hijri date, local offsets, and estimated-time indicators.
-- The daily Jaʿfarī and Tehran timetables show the available Ẓuhr and ʿAṣr faḍīlah estimates beside the prayer times. **About faḍīlah** gives the rule source and earlier recommended limits.
-- Preferences are off by default and live in browser storage when enabled. They cover appearance, clock format, a selected city, prayer settings, and profiles. The preference feature uses no cookies, account, or server-side profile store. Users can turn it off or clear their data from the Preferences dialog.
+- The daily timetable updates when its date, location, or calculation settings change. The Jaʿfarī and Tehran presets show available Ẓuhr and ʿAṣr faḍīlah estimates beside the prayer times. Use the asterisks to see sources and earlier recommended limits.
+- **Remember settings** is off by default. When enabled, browser storage holds appearance, clock format, the selected city, prayer settings, and profiles. Exact coordinates are used only for the current visit. Users can turn saving off or clear saved data from Settings.
 - The daily schedule starts with a clearly labeled Toronto example. The **Map** disclosure contacts OpenStreetMap with an approximate location only when opened. OpenStreetMap links and the public Crescent Visibility images use external services.
 - City selection uses a local list. Other locations can be entered as coordinates or set with device location.
 

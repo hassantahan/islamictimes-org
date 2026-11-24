@@ -4,7 +4,7 @@
 
 {% block content %}
 <section class="page-heading">
-  <div><h1>Crescent visibility</h1><p>See where the first crescent is predicted to be visible.</p></div>
+  <h1>Crescent visibility</h1>
 </section>
 
 <section class="map-section" aria-labelledby="map-title">
@@ -26,13 +26,13 @@
     <h2>Local forecast</h2>
     <div class="location-fields">{{ location_fields() }}</div>
     <div class="button-row">
-      <button class="button button-primary" type="submit">Calculate visibility</button>
-      <a id="visibility-map-link" class="quiet-link small" target="_blank" rel="noopener noreferrer" hidden>View location on OpenStreetMap</a>
+      <button class="button button-primary" type="submit">Calculate</button>
+      <a id="visibility-map-link" class="quiet-link small" target="_blank" rel="noopener noreferrer" hidden>Open map</a>
     </div>
   </form>
   <section aria-labelledby="forecast-title">
     <h2 id="forecast-title">Visibility by evening</h2>
-    <p class="small muted" id="visibility-status" role="status">Choose a location to see its forecast.</p>
+    <p class="small muted status" id="visibility-status" role="status"></p>
     <p class="small muted" id="visibility-criterion"></p>
     <ul id="visibility-entries" class="forecast-list"></ul>
   </section>

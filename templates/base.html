@@ -18,16 +18,15 @@
         <span>Islamic Times</span>
       </a>
       <nav class="site-nav" aria-label="Main navigation">
-        {% for endpoint, label in [('pages.index', 'Prayer Times'), ('pages.calendar_page', 'Prayer Calendar'), ('pages.visibilities_page', 'Crescent Visibility')] %}
+        {% for endpoint, label in [('pages.index', 'Prayer Times'), ('pages.calendar_page', 'Calendar'), ('pages.visibilities_page', 'Crescent')] %}
           <a href="{{ url_for(endpoint) }}" {% if request.endpoint == endpoint %}aria-current="page"{% endif %}>{{ label }}</a>
         {% endfor %}
       </nav>
-      <button class="button button-subtle settings-button" id="open-preferences" type="button">
-        <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
-          <path stroke-linecap="round" d="M4 7h16M4 12h16M4 17h16"></path>
-          <path stroke-width="4" stroke-linecap="round" d="M9 7h.01M15 12h.01M11 17h.01"></path>
+      <button class="icon-button settings-button" id="open-preferences" type="button" aria-label="Settings" title="Settings">
+        <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true">
+          <path d="M10 3.5h4l.5 2.4 1.6.9 2.3-.8 2 3.5-1.8 1.6v1.8l1.8 1.6-2 3.5-2.3-.8-1.6.9-.5 2.4h-4l-.5-2.4-1.6-.9-2.3.8-2-3.5 1.8-1.6v-1.8L3.6 9.5l2-3.5 2.3.8 1.6-.9z"></path>
+          <circle cx="12" cy="12" r="3"></circle>
         </svg>
-        Preferences
       </button>
     </div>
   </header>
@@ -38,31 +37,30 @@
 
   <footer class="site-footer">
     <div class="shell footer-inner">
-      <a class="wordmark" href="{{ url_for('pages.index') }}">Islamic Times</a>
-      <div class="footer-links">
-        <button class="text-button" type="button" data-open-preferences>Privacy &amp; preferences</button>
-        <a href="https://github.com/hassantahan/islamictimes-org" rel="noreferrer">Source code</a>
-      </div>
+      <a class="icon-button" href="https://github.com/hassantahan/islamictimes-org" rel="noreferrer" aria-label="GitHub" title="GitHub">
+        <span class="github-mark" aria-hidden="true"></span>
+      </a>
     </div>
   </footer>
 
   <dialog class="dialog" id="preferences" aria-labelledby="preferences-title">
     <form method="dialog" class="dialog-heading">
-      <h2 id="preferences-title">Preferences</h2>
-      <button class="button button-subtle" type="submit" aria-label="Close preferences">Close</button>
+      <h2 id="preferences-title">Settings</h2>
+      <button class="icon-button dialog-close" type="submit" aria-label="Close settings">×</button>
     </form>
+    {% block calculation_settings %}{% endblock %}
     <div class="fields two-fields">
       <label>Appearance
-        <select id="preference-theme"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select>
+        <select id="preference-theme"><option value="dark">Dark</option><option value="light">Light</option><option value="system">System</option></select>
       </label>
       <label>Time format
         <select id="preference-clock"><option value="24">24-hour</option><option value="12">12-hour</option></select>
       </label>
     </div>
     <div class="privacy-box">
-      <label class="checkbox-label"><input type="checkbox" id="preferences-enabled"> Remember preferences on this device</label>
-      <p class="muted small">When enabled, this browser keeps your appearance, clock format, chosen city, prayer settings, and any mosque profiles you save. Precise location is used for calculations you request and is never saved as a preference. Preference storage uses no cookies or account.</p>
-      <button class="text-button" id="clear-preferences" type="button">Clear saved preferences</button>
+      <label class="checkbox-label"><input type="checkbox" id="preferences-enabled"> Remember settings</label>
+      <p class="muted small">Saved in this browser.</p>
+      <button class="text-button" id="clear-preferences" type="button" hidden>Clear saved settings</button>
       <p role="status" class="small preference-status" id="preference-status"></p>
     </div>
   </dialog>

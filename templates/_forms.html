@@ -1,19 +1,21 @@
-{% macro location_fields(placeholder="Choose a city") %}
+{% macro location_fields(placeholder="Choose a city", map_link=true) %}
   <label>City
     <select data-city>
       <option value="">{{ placeholder }}</option>
-      <option value="custom">Coordinates or device location</option>
+      <option value="custom">Coordinates</option>
     </select>
   </label>
   <details class="coordinate-fields" data-coordinate-details>
-    <summary>Coordinates or device location</summary>
+    <summary>Coordinates</summary>
     <div class="fields two-fields">
       <label>Latitude <input data-latitude autocomplete="off" type="number" min="-90" max="90" step="any" placeholder="43.65"></label>
       <label>Longitude <input data-longitude autocomplete="off" type="number" min="-180" max="180" step="any" placeholder="−79.38"></label>
     </div>
     <button class="button button-subtle" data-geolocate type="button">Use device location</button>
     <p class="small muted" data-location-status role="status"></p>
+    {% if map_link %}
     <a class="quiet-link small" href="https://www.openstreetmap.org/" target="_blank" rel="noopener noreferrer">Find coordinates on OpenStreetMap</a>
+    {% endif %}
   </details>
 {% endmacro %}
 

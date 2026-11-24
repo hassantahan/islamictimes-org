@@ -142,7 +142,7 @@ saveProfile.addEventListener("click", () => {
     const saved = { id, ...data, ...readCalculation() };
     updatePreferences({ profiles: existingId ? profiles.map((profile) => profile.id === id ? saved : profile) : [...profiles, saved] });
     syncProfileOptions(id);
-    profileStatus.textContent = remembersPreferences() ? "Profile saved in this browser." : "Profile added for this page. Enable remembering in Preferences to keep it.";
+    profileStatus.textContent = remembersPreferences() ? "Profile saved." : "Profile added for this visit. To keep it, enable Remember settings.";
   } catch (error) {
     profileStatus.textContent = error.message;
   }

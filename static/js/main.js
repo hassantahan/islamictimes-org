@@ -3,9 +3,13 @@ import { getPreferences, updatePreferences } from "./shared/preferences.js";
 import { apiResponse, applySelect, civilDate, formatTime, localISO, PRAYERS, setupCustomAngles, shiftDate } from "./shared/timetable.js";
 
 const byId = (id) => document.getElementById(id);
-const form = byId("daily-location");
-const locationFields = setupLocation(form);
+const locationControls = byId("daily-location");
+const locationDialog = byId("location-dialog");
+const locationFields = setupLocation(locationControls);
+const city = locationControls.querySelector("[data-city]");
+const calculation = byId("daily-calculation");
 const date = byId("daily-date");
+const dateButton = byId("open-date-picker");
 const method = byId("daily-method");
 const asr = byId("daily-asr");
 const midnight = byId("daily-midnight");
@@ -22,11 +26,13 @@ let location;
 try { location = locationFields.read(); } catch { location = exampleLocation(); }
 let result;
 let displayedLocation = location;
-let followToday = true;
+let selectedDate;
+let saveSelections = false;
+let locationTimer;
+let calculationTimer;
 let tomorrow;
 let tomorrowPending = false;
 let activeRequest;
-
 
 function applySettings(settings) {
   applySelect(method, settings?.name || method.options[0].value);
@@ -47,6 +53,7 @@ function readSettings() {
 let appliedSettings = getPreferences().daily;
 applySettings(appliedSettings);
 appliedSettings = readSettings();
+let displayedSettings = appliedSettings;
 
 function getDaily(forDate, signal) {
   return apiResponse("/prayer_times", {
@@ -76,7 +83,8 @@ function renderHero() {
   byId("hero-day").hidden = !following;
   for (const row of prayerRows) row.classList.toggle("next-row", isToday && row.dataset.prayerRow === next?.key);
 
-  if (isToday && !next && !tomorrow && !tomorrowPending && displayedLocation === location) {
+  if (isToday && !next && !tomorrow && !tomorrowPending &&
+      displayedLocation === location && displayedSettings === appliedSettings) {
     const shown = result;
     tomorrowPending = true;
     getDaily(shiftDate(today, 1), activeRequest.signal).then((data) => {
@@ -90,40 +98,36 @@ function renderHero() {
 }
 
 function renderFadilah(windows) {
-  byId("fadilah-source").hidden = !windows;
-  byId("fadilah-unavailable").hidden = !windows || Object.keys(windows).length > 0;
   for (const key of ["zuhr", "asr"]) {
     const time = windows?.[key];
     const windowLabel = byId("fadilah-" + key);
-    const preferred = byId("preferred-" + key);
     windowLabel.hidden = !time;
-    preferred.hidden = !time;
-    if (!time) continue;
+    if (!time) {
+      byId("fadilah-note-" + key).hidePopover?.();
+      continue;
+    }
 
     const start = formatTime(time.start);
     const end = formatTime(time.end);
     const suffix = end.match(/ (AM|PM)$/)?.[0];
     const shortStart = suffix && start.endsWith(suffix) ? start.slice(0, -suffix.length) : start;
     windowLabel.querySelector("[data-fadilah-range]").textContent = shortStart + "–" + end;
-    preferred.querySelector("dd").textContent = formatTime(time.preferred_by);
+    windowLabel.querySelector("[data-fadilah-preferred]").textContent = formatTime(time.preferred_by);
   }
 }
 
 function renderMap() {
-  if (!map.open || !result) {
+  const lat = Number(displayedLocation.lat.toFixed(2));
+  const outOfBounds = Math.abs(lat) > 85;
+  byId("map-notice").textContent = outOfBounds ? "Map unavailable at this latitude." : "Approximate · OpenStreetMap";
+  if (!map.open || !result || outOfBounds) {
     if (mapFrame.hasAttribute("src")) mapFrame.removeAttribute("src");
     mapFrame.hidden = true;
     mapLink.hidden = true;
     return;
   }
 
-  const lat = Number(displayedLocation.lat.toFixed(2));
   const lon = Number(displayedLocation.lon.toFixed(2));
-  if (Math.abs(lat) > 85) {
-    byId("map-notice").textContent = "Map unavailable at this latitude.";
-    return;
-  }
-  byId("map-notice").textContent = "Shows the approximate location.";
   const bbox = [
     Math.max(-180, lon - 0.05), Math.max(-85, lat - 0.03),
     Math.min(180, lon + 0.05), Math.min(85, lat + 0.03),
@@ -145,11 +149,15 @@ function renderMap() {
 
 function renderDaily() {
   if (!result) return;
-  date.value = result.date;
-  byId("hero-date").textContent = civilDate(result.date, { weekday: "long", month: "long", day: "numeric" });
+  date.value = selectedDate ?? result.date;
+  const gregorian = byId("hero-date");
+  gregorian.dateTime = result.date;
+  gregorian.textContent = civilDate(result.date, { weekday: "long" }) + ", " +
+    civilDate(result.date, { month: "long", day: "numeric", year: "numeric" });
   byId("daily-heading-location").textContent = displayedLocation.label;
+  byId("example-location").hidden = !displayedLocation.example;
   const hijri = result.hijri;
-  byId("daily-hijri").textContent = hijri.day + " " + hijri.month_name + " " + hijri.year + " AH · Calculated";
+  byId("daily-hijri").textContent = hijri.day + " " + hijri.month_name + " " + hijri.year + " AH";
   for (const key of Object.keys({ ...PRAYERS, ...solarLabels })) {
     const time = result[key]?.time;
     const nextDay = formatTime(time) !== "—" && time.slice(0, 10) > result.date;
@@ -157,30 +165,30 @@ function renderDaily() {
   }
   byId("daily-warning").hidden = !result.warnings.length;
   byId("qibla-angle").textContent = result.qibla.angle_decimal.toFixed(1) + "° " + result.qibla.cardinal;
-  byId("qibla-distance").textContent = Math.round(result.qibla.distance_km).toLocaleString() + " km to the Kaaba";
+  byId("qibla-distance").textContent = Math.round(result.qibla.distance_km).toLocaleString() + " km";
   byId("qibla-needle").style.setProperty("--bearing", result.qibla.angle_decimal + "deg");
-  const methodOption = [...method.options].find((option) => option.value === appliedSettings.name);
-  byId("current-calculation-method").textContent = methodOption?.textContent ?? result.method.name;
   renderFadilah(result.fadilah);
   renderMap();
   renderHero();
 }
 
-async function refresh(forDate, save = false) {
+async function refresh() {
   activeRequest?.abort();
   const request = new AbortController();
   activeRequest = request;
   timeline.setAttribute("aria-busy", "true");
-  status.textContent = "Calculating prayer times…";
+  status.textContent = "Updating…";
   try {
-    const data = await getDaily(forDate, request.signal);
+    const data = await getDaily(selectedDate, request.signal);
     if (request.signal.aborted) return;
     tomorrow = null;
     tomorrowPending = false;
     result = data;
     if (displayedLocation.lat !== location.lat || displayedLocation.lon !== location.lon) map.open = false;
     displayedLocation = location;
-    if (save) {
+    displayedSettings = appliedSettings;
+    if (saveSelections) {
+      saveSelections = false;
       rememberCity(location);
       updatePreferences({ daily: appliedSettings });
     }
@@ -193,30 +201,99 @@ async function refresh(forDate, save = false) {
   }
 }
 
+function updateLocation() {
+  const errorStatus = byId("location-error");
+  try {
+    const newLocation = city.value ? locationFields.read() : exampleLocation();
+    errorStatus.textContent = "";
+    const unchanged = newLocation.lat === location.lat && newLocation.lon === location.lon && newLocation.label === location.label;
+    if (unchanged && (location === displayedLocation || timeline.getAttribute("aria-busy") === "true")) {
+      return;
+    }
+    location = newLocation;
+    saveSelections = true;
+    refresh();
+  } catch {
+    errorStatus.textContent = "Enter valid coordinates.";
+  }
+}
+
+function updateCalculation() {
+  const errorStatus = byId("calculation-error");
+  try {
+    const settings = readSettings();
+    errorStatus.textContent = "";
+    const unchanged = JSON.stringify(settings) === JSON.stringify(appliedSettings);
+    if (unchanged && (appliedSettings === displayedSettings || timeline.getAttribute("aria-busy") === "true")) return;
+    appliedSettings = settings;
+    saveSelections = true;
+    refresh();
+  } catch (error) {
+    errorStatus.textContent = error.message;
+  }
+}
+
+if (typeof date.showPicker === "function") {
+  date.classList.add("date-picker-anchor");
+  date.tabIndex = -1;
+  dateButton.hidden = false;
+  dateButton.addEventListener("click", () => {
+    try {
+      date.showPicker();
+    } catch {
+      date.classList.remove("date-picker-anchor");
+      date.removeAttribute("tabindex");
+      dateButton.hidden = true;
+      date.focus();
+    }
+  });
+}
 date.addEventListener("change", () => {
   if (!date.reportValidity()) return;
-  followToday = result ? date.value === localISO(new Date(), result.timezone) : false;
-  refresh(date.value);
+  const today = result && localISO(new Date(), result.timezone);
+  selectedDate = date.value === today ? undefined : date.value;
+  refresh();
 });
+
+for (const button of timeline.querySelectorAll("[popovertarget]")) {
+  const tile = byId(button.getAttribute("popovertarget"));
+  tile.addEventListener("beforetoggle", (event) => {
+    if (event.newState !== "open") return;
+    const rect = button.closest(".fadilah-window").getBoundingClientRect();
+    const tileWidth = Math.min(224, innerWidth - 24);
+    tile.style.left = Math.max(12, rect.right - tileWidth) + "px";
+    const below = innerHeight - rect.bottom;
+    tile.style.insetBlock = below >= 145 || below >= rect.top
+      ? (rect.bottom + 8) + "px auto"
+      : "auto " + (innerHeight - rect.top + 8) + "px";
+  });
+}
+
 map.addEventListener("toggle", renderMap);
-form.addEventListener("submit", (event) => {
-  event.preventDefault();
-  try {
-    const newLocation = form.querySelector("[data-city]").value ? locationFields.read() : exampleLocation();
-    const settings = readSettings();
-    location = newLocation;
-    appliedSettings = settings;
-    refresh(followToday ? undefined : date.value, true);
-  } catch (error) {
-    status.textContent = error.message;
+byId("open-location").addEventListener("click", () => locationDialog.showModal());
+locationControls.addEventListener("locationchange", () => {
+  clearTimeout(locationTimer);
+  if (city.value === "custom") {
+    locationTimer = setTimeout(updateLocation, 300);
+  } else {
+    updateLocation();
   }
+});
+calculation.addEventListener("input", (event) => {
+  if (!event.target.matches("[data-prayer-angle]")) return;
+  clearTimeout(calculationTimer);
+  calculationTimer = setTimeout(updateCalculation, 300);
+});
+calculation.addEventListener("change", () => {
+  clearTimeout(calculationTimer);
+  updateCalculation();
 });
 document.addEventListener("preferenceschange", ({ detail }) => {
   if (detail.keys.includes("clock")) renderDaily();
 });
 setInterval(() => {
   const isStale = result && result.date !== localISO(new Date(), result.timezone);
-  if (followToday && isStale && timeline.getAttribute("aria-busy") === "false") refresh();
+  if (!selectedDate && isStale && timeline.getAttribute("aria-busy") === "false") refresh();
   else renderHero();
 }, 30000);
 refresh();

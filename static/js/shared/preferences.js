@@ -1,5 +1,5 @@
 const STORAGE_KEY = "islamic-times.preferences.v1";
-const DEFAULTS = { theme: "system", clock: "24", city: "", daily: null, calendar: null, profiles: [] };
+const DEFAULTS = { theme: "dark", clock: "24", city: "", daily: null, calendar: null, profiles: [] };
 
 function readSaved() {
   try {
@@ -12,7 +12,7 @@ function readSaved() {
 
 function normalize(values) {
   return {
-    theme: ["system", "light", "dark"].includes(values.theme) ? values.theme : "system",
+    theme: ["system", "light", "dark"].includes(values.theme) ? values.theme : DEFAULTS.theme,
     clock: values.clock === "12" ? "12" : "24",
     city: typeof values.city === "string" ? values.city : "",
     daily: values.daily ?? null,
@@ -69,11 +69,11 @@ function render() {
   theme.value = preferences.theme;
   clock.value = preferences.clock;
   remember.checked = enabled;
-  clear.disabled = !enabled;
+  clear.hidden = !enabled;
 }
 
 function reportStorageError() {
-  status.textContent = "Browser storage is unavailable. Choices can still be used on this page.";
+  status.textContent = "Browser storage unavailable.";
 }
 
 function stopSaving(reset) {
@@ -86,7 +86,7 @@ function stopSaving(reset) {
   }
   enabled = false;
   if (reset) preferences = normalize(DEFAULTS);
-  status.textContent = reset ? "Saved preferences cleared." : "Saving is off. Saved preferences were cleared.";
+  status.textContent = "Saved settings cleared.";
   announceChange(reset ? Object.keys(DEFAULTS) : []);
   render();
 }
@@ -95,7 +95,6 @@ function stopSaving(reset) {
 try { localStorage.removeItem("theme"); } catch { /* Storage is unavailable. */ }
 
 document.getElementById("open-preferences").addEventListener("click", () => dialog.showModal());
-document.querySelector("[data-open-preferences]").addEventListener("click", () => dialog.showModal());
 document.addEventListener("preferenceschange", render);
 theme.addEventListener("change", () => updatePreferences({ theme: theme.value }));
 clock.addEventListener("change", () => updatePreferences({ clock: clock.value }));
@@ -107,7 +106,7 @@ remember.addEventListener("change", () => {
   try {
     writeSaved(preferences);
     enabled = true;
-    status.textContent = "Preferences are saved in this browser.";
+    status.textContent = "";
   } catch {
     reportStorageError();
   }

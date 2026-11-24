@@ -4,7 +4,7 @@
 
 {% block content %}
 <section class="page-heading calendar-heading">
-  <div><h1>Prayer Calendar</h1><p>Generate a timetable for your city or mosque.</p></div>
+  <h1>Prayer Calendar</h1>
 </section>
 
 <form class="calendar-controls" id="calendar-form" aria-label="Timetable settings">
@@ -12,22 +12,22 @@
     <div class="location-fields">{{ location_fields() }}</div>
     <label>Start date <input id="calendar-start" type="date" min="1900-01-01" max="2100-12-31" required></label>
     <label>End date <input id="calendar-end" type="date" min="1900-01-01" max="2100-12-31" required></label>
-    <button class="button button-primary" type="submit" id="generate-calendar">Generate timetable</button>
+    <button class="button button-primary" type="submit" id="generate-calendar">Generate</button>
   </div>
 
   <details class="coordinate-fields calendar-options" id="calendar-settings">
-    <summary>Calculation settings and mosque profiles</summary>
+    <summary>Method &amp; profiles</summary>
     <div class="fields calendar-methods">
       <label>Mosque profile <select id="profile-select"><option value="">No saved profile</option></select></label>
-      <label>Calculation method <select id="calendar-method">{{ method_options(custom=true) }}</select></label>
-      <label>ʿAṣr calculation <select id="calendar-asr">{{ asr_options() }}</select></label>
+      <label>Method <select id="calendar-method">{{ method_options(custom=true) }}</select></label>
+      <label>ʿAṣr <select id="calendar-asr">{{ asr_options() }}</select></label>
       {{ angle_fields("calendar-") }}
     </div>
 
     <details class="coordinate-fields" id="profile-editor">
-      <summary>Mosque profile &amp; offsets</summary>
+      <summary>Edit profile</summary>
       <label class="profile-name">Profile name <input type="text" maxlength="60" id="profile-name" autocomplete="off" placeholder="e.g. My local mosque"></label>
-      <p class="muted small">Enter signed whole minutes. Positive offsets move a prayer later.</p>
+      <p class="muted small">Offsets in minutes. Positive values delay the prayer.</p>
       <div class="fields offset-fields">
         {% for key, label in [('fajr', 'Fajr'), ('zuhr', 'Ẓuhr'), ('asr', 'ʿAṣr'), ('maghrib', 'Maghrib'), ('isha', 'ʿIshāʾ')] %}
         <label>{{ label }} <input type="number" min="-180" max="180" step="1" value="0" data-offset="{{ key }}"></label>
@@ -44,22 +44,26 @@
 
 <section class="calendar-results" id="calendar-results" aria-labelledby="calendar-results-title">
   <div class="section-heading">
-    <div><h2 id="calendar-results-title">Your timetable</h2><p id="calendar-meta" class="muted small"></p></div>
+    <div><h2 id="calendar-results-title">Timetable</h2><p id="calendar-meta" class="muted small"></p></div>
     <div class="button-row">
       <button class="button button-subtle" type="button" data-download="ics" disabled>Download .ics</button>
       <button class="button button-subtle" type="button" data-download="csv" disabled>Download CSV</button>
     </div>
   </div>
-  <p id="calendar-status" class="small muted status" role="status">Choose a location and date range to see prayer times.</p>
-  <p class="small muted scroll-hint" id="calendar-scroll-hint" hidden>Scroll across the timetable to see all five prayers.</p>
+  <p id="calendar-status" class="small muted status" role="status"></p>
+  <p class="small muted scroll-hint" id="calendar-scroll-hint" hidden>Scroll for later prayers.</p>
   <div class="table-scroll" id="calendar-table-wrapper" hidden tabindex="0" role="region" aria-label="Scrollable prayer calendar">
     <table id="calendar-table" class="calendar-table">
       <thead><tr><th scope="col">Date</th><th scope="col">Fajr</th><th scope="col">Ẓuhr</th><th scope="col">ʿAṣr</th><th scope="col">Maghrib</th><th scope="col">ʿIshāʾ</th></tr></thead>
       <tbody></tbody>
     </table>
   </div>
-  <p id="calendar-legend" class="muted small" hidden>Local times. † Estimated prayer. −1d / +1d indicates a different local date. A dash means the time is unavailable.</p>
-  <p class="muted small calendar-footnote">The .ics file contains the five daily prayers. CSV also includes Hijri dates, sunrise, sunset, and midnight. Calculated Hijri dates may differ from local observance.</p>
+  <p id="calendar-legend" class="muted small" hidden>† Estimated · ±1d Adjacent day · — Unavailable</p>
+  <details class="coordinate-fields export-details">
+    <summary>Export details</summary>
+    <p class="muted small">Both formats contain the five prayers. CSV adds calculated Hijri dates, sunrise, sunset, and midnight.</p>
+    <p class="muted small">Times are local. Hijri dates may differ from local observance.</p>
+  </details>
 </section>
 {% endblock %}
 

@@ -4,22 +4,22 @@
 
 {% block content %}
 <section class="page-heading daily-heading">
-  <div>
-    <h1>Prayer times</h1>
-    <div class="daily-location-line">
-      <p id="daily-heading-location">Toronto, Canada · Example location</p>
-      <a class="quiet-link small" href="#daily-location">Change location</a>
-    </div>
-  </div>
+  <h1>Prayer times</h1>
   <div class="daily-date-group">
-    <div>
-      <p id="hero-date"></p>
-      <p class="small muted" id="daily-hijri"></p>
+    <div class="day-dates">
+      <time id="hero-date"></time>
+      <p class="muted" id="daily-hijri"></p>
     </div>
-    <label class="date-picker-label">
-      <span class="visually-hidden">Choose date</span>
-      <input type="date" id="daily-date" required min="1900-01-01" max="2100-12-31">
-    </label>
+    <div class="date-control">
+      <input type="date" id="daily-date" aria-label="Date" required min="1900-01-01" max="2100-12-31">
+      <button class="icon-button" id="open-date-picker" type="button" aria-label="Choose date" title="Choose date" hidden>
+        <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" aria-hidden="true">
+          <rect x="3.5" y="5.5" width="17" height="15" rx="2"></rect>
+          <path d="M7.5 3.5v4m9-4v4M3.5 10h17"></path>
+          <circle cx="12" cy="15" r="1" fill="currentColor" stroke="none"></circle>
+        </svg>
+      </button>
+    </div>
   </div>
 </section>
 
@@ -35,7 +35,7 @@
     </div>
   </div>
 
-  <p class="notice" id="daily-warning" hidden>Some times at this latitude are estimated or unavailable.</p>
+  <p class="notice" id="daily-warning" hidden>Some times are estimated or unavailable.</p>
   <ul class="prayer-timeline" id="daily-timeline" role="list" aria-label="Daily schedule" aria-busy="false">
     {% for key, label in [('fajr', 'Fajr'), ('zuhr', 'Ẓuhr'), ('asr', 'ʿAṣr'), ('maghrib', 'Maghrib'), ('isha', 'ʿIshāʾ')] %}
     <li data-prayer-row="{{ key }}">
@@ -43,7 +43,21 @@
       <div class="prayer-reading">
         <strong id="time-{{ key }}">—</strong>
         {% if key in ("zuhr", "asr") %}
-        <span class="fadilah-window" id="fadilah-{{ key }}" hidden><span>Faḍīlah</span><span data-fadilah-range></span></span>
+        <div class="fadilah-window" id="fadilah-{{ key }}" hidden>
+          <div class="fadilah-label">
+            <span>Faḍīlah</span>
+            <button class="fadilah-info" type="button" popovertarget="fadilah-note-{{ key }}" aria-label="{{ label }} faḍīlah details">*</button>
+          </div>
+          <span data-fadilah-range></span>
+          <div class="fadilah-tile" id="fadilah-note-{{ key }}" popover aria-label="{{ label }} faḍīlah">
+            <p>Preferred by <b data-fadilah-preferred></b></p>
+            <p><a href="https://www.sistani.org/persian/book/26575/6324/">Sayyid Sistani</a></p>
+            <p class="muted">Estimate · ordinary conditions</p>
+            {% if key == "asr" %}
+            <p class="muted"><a href="https://www.sistani.org/persian/book/26575/6319/">Shared time with Ẓuhr</a></p>
+            {% endif %}
+          </div>
+        </div>
         {% endif %}
       </div>
     </li>
@@ -51,72 +65,74 @@
   </ul>
 
   <div class="prayer-sheet-footer">
-    <div class="daily-footnotes">
-      <dl class="solar-strip">
-        {% for key, label in [('sunrise', 'Sunrise'), ('sunset', 'Sunset'), ('midnight', 'Midnight')] %}
-        <div><dt>{{ label }}</dt><dd id="time-{{ key }}">—</dd></div>
-        {% endfor %}
-      </dl>
-      <details class="fadilah-source" id="fadilah-source" hidden>
-        <summary>About faḍīlah</summary>
-        <p>Preferred-time estimates under ordinary conditions, following Sayyid Sistani.
-          <a href="https://www.sistani.org/persian/book/26575/6319/">Legal noon</a> ·
-          <a href="https://www.sistani.org/persian/book/26575/6324/">Rulings 966–967</a>
-        </p>
-        <p>ʿAṣr may be prayed after Ẓuhr in their shared time. Its main timetable marker comes from the selected calculation method.</p>
-        <dl class="solar-strip" id="fadilah-earlier">
-          <div id="preferred-zuhr" hidden><dt>Ẓuhr preferred by</dt><dd></dd></div>
-          <div id="preferred-asr" hidden><dt>ʿAṣr preferred by</dt><dd></dd></div>
-        </dl>
-        <p id="fadilah-unavailable" hidden>Daytime windows are unavailable for this location and date.</p>
-      </details>
-    </div>
+    <dl class="solar-strip">
+      {% for key, label in [('sunrise', 'Sunrise'), ('sunset', 'Sunset'), ('midnight', 'Midnight')] %}
+      <div><dt>{{ label }}</dt><dd id="time-{{ key }}">—</dd></div>
+      {% endfor %}
+    </dl>
     <p id="daily-status" class="small status" role="status"></p>
   </div>
 </section>
 
 <div class="daily-tools">
-  <form class="daily-settings" id="daily-location">
-    <h2>Location</h2>
-    <div class="location-fields">{{ location_fields("Toronto (example)") }}</div>
-    <details class="coordinate-fields" id="daily-advanced">
-      <summary>Calculation method <span class="muted" id="current-calculation-method">Jaʿfarī</span></summary>
-      <div class="fields two-fields" id="advanced-fields">
-        <label class="full-width">Preset <select id="daily-method">{{ method_options(custom=true) }}</select></label>
-        <label>ʿAṣr calculation <select id="daily-asr">{{ asr_options() }}</select></label>
-        <label>Midnight <select id="daily-midnight">
-          <option value="">Method default</option><option value="0">Sunset to sunrise</option><option value="1">Sunset to Fajr</option>
-        </select></label>
-        {{ angle_fields() }}
-      </div>
+  <section class="daily-location-panel" aria-labelledby="location-title">
+    <h2 id="location-title">Location</h2>
+    <button class="location-button" id="open-location" type="button" aria-haspopup="dialog" aria-labelledby="location-title daily-heading-location">
+      <span id="daily-heading-location">Toronto, Canada</span>
+      <svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="m6 3.5 4.5 4.5L6 12.5"></path>
+      </svg>
+    </button>
+    <p class="muted small" id="example-location">Example location</p>
+    <details class="location-map" id="daily-map">
+      <summary title="OpenStreetMap · Approximate location">Map</summary>
+      <p class="muted small" id="map-notice">Approximate · OpenStreetMap</p>
+      <iframe id="daily-map-frame" title="Approximate location on OpenStreetMap" referrerpolicy="no-referrer" hidden></iframe>
+      <a id="daily-map-link" class="quiet-link small" target="_blank" rel="noopener noreferrer" aria-label="Open in OpenStreetMap" hidden>Open map</a>
     </details>
-    <div class="button-row">
-      <button class="button button-primary" type="submit">Update prayer times</button>
-    </div>
-  </form>
+  </section>
 
-  <div class="daily-context">
-    <section class="qibla-section" aria-labelledby="qibla-title">
+  <section class="qibla-section" aria-labelledby="qibla-title">
     <div>
       <h2 id="qibla-title">Qibla</h2>
-      <p class="qibla-angle" id="qibla-angle">—</p>
-      <p class="muted small">From true north</p>
-      <p class="muted small" id="qibla-distance"></p>
+      <p class="qibla-angle" id="qibla-angle" title="Bearing from true north">—</p>
+      <p class="muted small" id="qibla-distance" title="Distance to the Kaaba"></p>
     </div>
     <div class="qibla-dial" aria-hidden="true">
       <span class="dial-north">N</span><span class="dial-east">E</span>
       <span class="dial-south">S</span><span class="dial-west">W</span>
       <span class="qibla-needle" id="qibla-needle"></span>
     </div>
-    </section>
-    <details class="location-map" id="daily-map">
-      <summary>Map <span class="muted">OpenStreetMap</span></summary>
-      <p class="muted small" id="map-notice">Shows the approximate location.</p>
-      <iframe id="daily-map-frame" title="Approximate location on OpenStreetMap" referrerpolicy="no-referrer" hidden></iframe>
-      <a id="daily-map-link" class="quiet-link small" target="_blank" rel="noopener noreferrer" hidden>Open in OpenStreetMap</a>
-    </details>
-  </div>
+  </section>
 </div>
+
+<dialog class="dialog location-dialog" id="location-dialog" aria-labelledby="location-dialog-title">
+  <form method="dialog" class="dialog-heading">
+    <h2 id="location-dialog-title">Location</h2>
+    <button class="icon-button dialog-close" type="submit" aria-label="Close location">×</button>
+  </form>
+  <div class="location-fields" id="daily-location">
+    {{ location_fields("Toronto (example)", map_link=false) }}
+  </div>
+  <p class="small status" id="location-error" role="status"></p>
+</dialog>
+{% endblock %}
+
+{% block calculation_settings %}
+<section class="calculation-settings" id="daily-calculation" aria-label="Calculation">
+  <label>Method <select id="daily-method">{{ method_options(custom=true) }}</select></label>
+  <details class="coordinate-fields" id="daily-advanced">
+    <summary>Options</summary>
+    <div class="fields two-fields">
+      <label>ʿAṣr <select id="daily-asr">{{ asr_options() }}</select></label>
+      <label>Midnight <select id="daily-midnight">
+        <option value="">Method default</option><option value="0">Sunset to sunrise</option><option value="1">Sunset to Fajr</option>
+      </select></label>
+      {{ angle_fields() }}
+    </div>
+  </details>
+  <p class="small status" id="calculation-error" role="status"></p>
+</section>
 {% endblock %}
 
 {% block scripts %}

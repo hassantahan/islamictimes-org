@@ -31,7 +31,7 @@ export function savedCity() {
 }
 
 export function exampleLocation() {
-  return { ...CITIES.toronto, label: CITIES.toronto.label + " · Example location", city: "" };
+  return { ...CITIES.toronto, city: "", example: true };
 }
 
 export function rememberCity(location) {
@@ -57,9 +57,9 @@ export function setupLocation(form) {
   for (const [key, place] of Object.entries(CITIES)) city.insertBefore(new Option(place.label, key), customOption);
   city.value = savedCity();
 
-  function markCustom() {
+  function markCustom(deviceLocation = false) {
     city.value = "custom";
-    fromDevice = false;
+    fromDevice = deviceLocation;
     form.dispatchEvent(new Event("locationchange"));
   }
 
@@ -74,24 +74,23 @@ export function setupLocation(form) {
     form.dispatchEvent(new Event("locationchange"));
   });
 
-  lat.addEventListener("input", markCustom);
-  lon.addEventListener("input", markCustom);
+  lat.addEventListener("input", () => markCustom());
+  lon.addEventListener("input", () => markCustom());
   device.addEventListener("click", () => {
     if (!navigator.geolocation) {
-      status.textContent = "Device location is unavailable. Enter coordinates or choose a city.";
+      status.textContent = "Device location unavailable.";
       return;
     }
     device.disabled = true;
-    status.textContent = "Requesting device location…";
+    status.textContent = "Locating…";
     navigator.geolocation.getCurrentPosition(({ coords }) => {
       lat.value = coords.latitude.toFixed(6);
       lon.value = coords.longitude.toFixed(6);
-      markCustom();
-      fromDevice = true;
-      status.textContent = "Device location is ready to use.";
+      markCustom(true);
+      status.textContent = "";
       device.disabled = false;
     }, () => {
-      status.textContent = "Device location was unavailable. Enter coordinates or choose a city.";
+      status.textContent = "Device location unavailable.";
       device.disabled = false;
     }, { timeout: 10000 });
   });
