@@ -173,6 +173,15 @@ def build_prayer_times_response(payload: dict) -> dict:
         "month_name": HIJRI_MONTH_NAMES[h_month - 1],
     }
     out["qibla"] = _build_qibla_data(loc)
+    if method.keys[0] in ("JAFARI", "TEHRAN"):
+        out["fadilah"] = {
+            key: {
+                "start": window.start.isoformat(timespec="seconds"),
+                "preferred_by": window.preferred_by.isoformat(timespec="seconds"),
+                "end": window.end.isoformat(timespec="seconds"),
+            }
+            for key, window in loc.sistani_daylight_fadilah().items()
+        }
 
     out["warnings"] = []
     for item in caught:

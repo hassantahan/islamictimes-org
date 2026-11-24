@@ -1,4 +1,5 @@
 import unittest
+from datetime import datetime
 from unittest import mock
 
 from app import app
@@ -43,6 +44,23 @@ class ApiContractTests(unittest.TestCase):
         self.assertIsInstance(payload["qibla"]["cardinal"], str)
         self.assertGreater(payload["qibla"]["distance_km"], 0.0)
         self.assertGreater(payload["qibla"]["distance_mi"], 0.0)
+
+    def test_shia_timetables_include_sistani_daylight_windows(self):
+        coordinates = {"lat": 43.65, "lon": -79.38, "date": "2026-11-24"}
+        for method in ("JAFARI", "TEHRAN", "CUSTOM"):
+            with self.subTest(method=method):
+                response = self.client.post(
+                    "/prayer_times", json={**coordinates, "method": {"name": method, "midnight_type": "preset"}},
+                )
+                self.assertEqual(response.status_code, 200)
+                windows = response.get_json()["fadilah"]
+                self.assertEqual(set(windows), {"zuhr", "asr"})
+                self.assertEqual(windows["zuhr"]["preferred_by"], windows["asr"]["start"])
+                self.assertEqual(windows["zuhr"]["end"], windows["asr"]["preferred_by"])
+                self.assertLess(datetime.fromisoformat(windows["asr"]["start"]),
+                                datetime.fromisoformat(windows["asr"]["end"]))
+        response = self.client.post("/prayer_times", json={**coordinates, "method": {"name": "ISNA"}})
+        self.assertNotIn("fadilah", response.get_json())
 
     def test_prayer_times_preset_method_honors_midnight_override(self):
         response = self.client.post(

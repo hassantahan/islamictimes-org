@@ -14,6 +14,9 @@ const status = byId("daily-status");
 const timeline = byId("daily-timeline");
 const prayerRows = [...timeline.querySelectorAll("[data-prayer-row]")];
 const solarLabels = { sunrise: "Sunrise", sunset: "Sunset", midnight: "Midnight" };
+const map = byId("daily-map");
+const mapFrame = byId("daily-map-frame");
+const mapLink = byId("daily-map-link");
 
 let location;
 try { location = locationFields.read(); } catch { location = exampleLocation(); }
@@ -86,6 +89,60 @@ function renderHero() {
   }
 }
 
+function renderFadilah(windows) {
+  byId("fadilah-source").hidden = !windows;
+  byId("fadilah-unavailable").hidden = !windows || Object.keys(windows).length > 0;
+  for (const key of ["zuhr", "asr"]) {
+    const time = windows?.[key];
+    const windowLabel = byId("fadilah-" + key);
+    const preferred = byId("preferred-" + key);
+    windowLabel.hidden = !time;
+    preferred.hidden = !time;
+    if (!time) continue;
+
+    const start = formatTime(time.start);
+    const end = formatTime(time.end);
+    const suffix = end.match(/ (AM|PM)$/)?.[0];
+    const shortStart = suffix && start.endsWith(suffix) ? start.slice(0, -suffix.length) : start;
+    windowLabel.querySelector("[data-fadilah-range]").textContent = shortStart + "–" + end;
+    preferred.querySelector("dd").textContent = formatTime(time.preferred_by);
+  }
+}
+
+function renderMap() {
+  if (!map.open || !result) {
+    if (mapFrame.hasAttribute("src")) mapFrame.removeAttribute("src");
+    mapFrame.hidden = true;
+    mapLink.hidden = true;
+    return;
+  }
+
+  const lat = Number(displayedLocation.lat.toFixed(2));
+  const lon = Number(displayedLocation.lon.toFixed(2));
+  if (Math.abs(lat) > 85) {
+    byId("map-notice").textContent = "Map unavailable at this latitude.";
+    return;
+  }
+  byId("map-notice").textContent = "Shows the approximate location.";
+  const bbox = [
+    Math.max(-180, lon - 0.05), Math.max(-85, lat - 0.03),
+    Math.min(180, lon + 0.05), Math.min(85, lat + 0.03),
+  ];
+  const url = new URL("https://www.openstreetmap.org/export/embed.html");
+  url.search = new URLSearchParams({
+    bbox: bbox.map((coordinate) => coordinate.toFixed(2)).join(","),
+    layer: "mapnik",
+    marker: lat + "," + lon,
+  }).toString();
+  mapFrame.hidden = false;
+  if (mapFrame.src !== url.href) {
+    // The embed fits its map to the frame dimensions during initialization.
+    mapFrame.getBoundingClientRect();
+    mapFrame.src = url.href;
+  }
+  setMapLink(mapLink, { lat, lon });
+}
+
 function renderDaily() {
   if (!result) return;
   date.value = result.date;
@@ -102,7 +159,10 @@ function renderDaily() {
   byId("qibla-angle").textContent = result.qibla.angle_decimal.toFixed(1) + "° " + result.qibla.cardinal;
   byId("qibla-distance").textContent = Math.round(result.qibla.distance_km).toLocaleString() + " km to the Kaaba";
   byId("qibla-needle").style.setProperty("--bearing", result.qibla.angle_decimal + "deg");
-  setMapLink(byId("daily-map-link"), displayedLocation);
+  const methodOption = [...method.options].find((option) => option.value === appliedSettings.name);
+  byId("current-calculation-method").textContent = methodOption?.textContent ?? result.method.name;
+  renderFadilah(result.fadilah);
+  renderMap();
   renderHero();
 }
 
@@ -118,6 +178,7 @@ async function refresh(forDate, save = false) {
     tomorrow = null;
     tomorrowPending = false;
     result = data;
+    if (displayedLocation.lat !== location.lat || displayedLocation.lon !== location.lon) map.open = false;
     displayedLocation = location;
     if (save) {
       rememberCity(location);
@@ -137,10 +198,11 @@ date.addEventListener("change", () => {
   followToday = result ? date.value === localISO(new Date(), result.timezone) : false;
   refresh(date.value);
 });
+map.addEventListener("toggle", renderMap);
 form.addEventListener("submit", (event) => {
   event.preventDefault();
   try {
-    const newLocation = locationFields.read();
+    const newLocation = form.querySelector("[data-city]").value ? locationFields.read() : exampleLocation();
     const settings = readSettings();
     location = newLocation;
     appliedSettings = settings;

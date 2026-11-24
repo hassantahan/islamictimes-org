@@ -1,12 +1,12 @@
-{% macro location_fields() %}
+{% macro location_fields(placeholder="Choose a city") %}
   <label>City
     <select data-city>
-      <option value="">Choose a city</option>
+      <option value="">{{ placeholder }}</option>
       <option value="custom">Coordinates or device location</option>
     </select>
   </label>
   <details class="coordinate-fields" data-coordinate-details>
-    <summary>Use coordinates or device location</summary>
+    <summary>Coordinates or device location</summary>
     <div class="fields two-fields">
       <label>Latitude <input data-latitude autocomplete="off" type="number" min="-90" max="90" step="any" placeholder="43.65"></label>
       <label>Longitude <input data-longitude autocomplete="off" type="number" min="-180" max="180" step="any" placeholder="−79.38"></label>
