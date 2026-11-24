@@ -4,38 +4,38 @@
 
 {% block content %}
 <section class="page-heading">
-  <div><h1>Crescent visibility</h1><p>Explore predicted visibility of the first crescent around the world.</p></div>
+  <div><h1>Crescent visibility</h1><p>See where the first crescent is predicted to be visible.</p></div>
 </section>
 
-<div class="visibility-grid">
-  <section class="panel" aria-labelledby="map-title">
-    <div class="panel-heading">
-      <div><h2 id="map-title">Global visibility</h2><p class="muted small">Precomputed visibility maps by Hijri month</p></div>
-    </div>
-    <div class="fields two-fields">
+<section class="map-section" aria-labelledby="map-title">
+  <div class="section-heading map-toolbar">
+    <div><h2 id="map-title">Global visibility</h2></div>
+    <div class="fields map-fields">
       <label>Hijri month <select id="month-select" disabled></select></label>
       <label>Hijri year <select id="year-select" disabled></select></label>
     </div>
-    <figure class="visibility-map">
-      <p id="map-status" class="small status" role="status">Loading available maps…</p>
-      <img id="map-output" data-base="{{ maps_base }}" alt="" referrerpolicy="no-referrer" hidden>
-    </figure>
-  </section>
+  </div>
+  <figure class="visibility-map">
+    <p id="map-status" class="small status" role="status">Loading available maps…</p>
+    <img id="map-output" data-base="{{ maps_base }}" alt="" referrerpolicy="no-referrer" hidden>
+  </figure>
+</section>
 
-  <div class="visibility-side">
-    <form id="visibility-form" class="panel control-panel">
-      <h2>Local forecast</h2>
-      {{ location_fields() }}
+<div class="forecast-grid">
+  <form id="visibility-form" class="local-visibility">
+    <h2>Local forecast</h2>
+    <div class="location-fields">{{ location_fields() }}</div>
+    <div class="button-row">
       <button class="button button-primary" type="submit">Calculate visibility</button>
       <a id="visibility-map-link" class="quiet-link small" target="_blank" rel="noopener noreferrer" hidden>View location on OpenStreetMap</a>
-    </form>
-    <section class="panel" aria-labelledby="forecast-title">
-      <h2 id="forecast-title">Visibility by evening</h2>
-      <p class="small muted" id="visibility-status" role="status">Choose a location to see its forecast.</p>
-      <p class="small muted" id="visibility-criterion"></p>
-      <ul id="visibility-entries" class="forecast-list"></ul>
-    </section>
-  </div>
+    </div>
+  </form>
+  <section aria-labelledby="forecast-title">
+    <h2 id="forecast-title">Visibility by evening</h2>
+    <p class="small muted" id="visibility-status" role="status">Choose a location to see its forecast.</p>
+    <p class="small muted" id="visibility-criterion"></p>
+    <ul id="visibility-entries" class="forecast-list"></ul>
+  </section>
 </div>
 {% endblock %}
 

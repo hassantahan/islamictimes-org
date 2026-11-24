@@ -150,8 +150,9 @@ form.addEventListener("input", clearResult);
 form.addEventListener("change", clearResult);
 form.addEventListener("locationchange", clearResult);
 form.addEventListener("invalid", ({ target }) => {
-  const details = target.closest("details");
-  if (details) details.open = true;
+  for (let details = target.closest("details"); details; details = details.parentElement.closest("details")) {
+    details.open = true;
+  }
 }, true);
 form.addEventListener("submit", async (event) => {
   event.preventDefault();

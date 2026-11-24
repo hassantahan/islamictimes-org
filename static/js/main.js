@@ -13,7 +13,8 @@ const angleInputs = {
   fajr_angle: byId("fajr-angle"), maghrib_angle: byId("maghrib-angle"), isha_angle: byId("isha-angle"),
 };
 const status = byId("daily-status");
-const table = byId("daily-table");
+const timeline = byId("daily-timeline");
+const prayerRows = [...timeline.querySelectorAll("[data-prayer-row]")];
 const solarLabels = { sunrise: "Sunrise", sunset: "Sunset", midnight: "Midnight" };
 
 let location;
@@ -85,10 +86,9 @@ function renderHero() {
 
   byId("hero-label").textContent = isToday ? "Next prayer" : "First prayer";
   byId("hero-prayer").textContent = (next || following)?.label ?? "—";
-  byId("hero-time").textContent = next ? formatTime(next.time) : following ? formatTime(following.time) + " · Tomorrow" : "—";
-  byId("hero-sunrise").textContent = formatTime(result.sunrise?.time);
-  byId("hero-sunset").textContent = formatTime(result.sunset?.time);
-  for (const row of table.rows) row.classList.toggle("next-row", isToday && row.dataset.prayerRow === next?.key);
+  byId("hero-time").textContent = formatTime((next || following)?.time);
+  byId("hero-day").hidden = !following;
+  for (const row of prayerRows) row.classList.toggle("next-row", isToday && row.dataset.prayerRow === next?.key);
 
   if (isToday && !next && !tomorrow && !tomorrowPending && displayedLocation === location) {
     const shown = result;
@@ -127,7 +127,7 @@ async function refresh(forDate, save = false) {
   activeRequest?.abort();
   const request = new AbortController();
   activeRequest = request;
-  table.setAttribute("aria-busy", "true");
+  timeline.setAttribute("aria-busy", "true");
   status.textContent = "Calculating prayer times…";
   try {
     const data = await getDaily(forDate, request.signal);
@@ -145,7 +145,7 @@ async function refresh(forDate, save = false) {
   } catch (error) {
     if (!request.signal.aborted) status.textContent = error.message;
   } finally {
-    if (!request.signal.aborted) table.setAttribute("aria-busy", "false");
+    if (!request.signal.aborted) timeline.setAttribute("aria-busy", "false");
   }
 }
 
@@ -171,7 +171,7 @@ document.addEventListener("preferenceschange", ({ detail }) => {
 });
 setInterval(() => {
   const isStale = result && result.date !== localISO(new Date(), result.timezone);
-  if (followToday && isStale && table.getAttribute("aria-busy") === "false") refresh();
+  if (followToday && isStale && timeline.getAttribute("aria-busy") === "false") refresh();
   else renderHero();
 }, 30000);
 refresh();

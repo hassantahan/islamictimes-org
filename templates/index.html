@@ -3,89 +3,97 @@
 {% block title %}Prayer Times · Islamic Times{% endblock %}
 
 {% block content %}
-<section class="page-heading">
+<section class="page-heading daily-heading">
   <div>
     <h1>Prayer times</h1>
-    <p id="daily-heading-location">Toronto, Canada · Example location</p>
+    <div class="daily-location-line">
+      <p id="daily-heading-location">Toronto, Canada · Example location</p>
+      <a class="quiet-link small" href="#daily-location">Change location</a>
+    </div>
   </div>
-  <a class="button button-subtle" href="#daily-location">Change location</a>
+  <div class="daily-date-group">
+    <div>
+      <p id="hero-date"></p>
+      <p class="small muted" id="daily-hijri"></p>
+    </div>
+    <label class="date-picker-label">
+      <span class="visually-hidden">Choose date</span>
+      <input type="date" id="daily-date" required min="1900-01-01" max="2100-12-31">
+    </label>
+  </div>
 </section>
 
-<section class="daily-feature" aria-label="Prayer overview">
-  <div class="prayer-hero">
-    <div class="orbit-art" aria-hidden="true"><span></span><i></i></div>
-    <div class="mihrab-art" aria-hidden="true"></div>
-    <div class="hero-content">
-      <p class="hero-date" id="hero-date"></p>
-      <p class="hero-label" id="hero-label">Next prayer</p>
+<section class="prayer-sheet" aria-label="Daily prayer times">
+  <div class="prayer-clock">
+    <div class="clock-copy">
+      <p class="clock-label" id="hero-label">Next prayer</p>
       <h2 id="hero-prayer">—</h2>
-      <p class="hero-time" id="hero-time">—</p>
     </div>
-    <div class="hero-solar">
-      <span>Sunrise <strong id="hero-sunrise">—</strong></span>
-      <span>Sunset <strong id="hero-sunset">—</strong></span>
+    <div class="clock-reading">
+      <p class="clock-time" id="hero-time">—</p>
+      <p class="clock-day small" id="hero-day" hidden>Tomorrow</p>
     </div>
+    <span class="clock-rosette" aria-hidden="true"></span>
   </div>
-  <section class="panel qibla-card" aria-labelledby="qibla-title">
-    <div>
-      <h2 id="qibla-title">Qibla direction</h2>
-      <p class="muted small">From true north</p>
-    </div>
-    <div class="compass" aria-hidden="true"><span>N</span><i id="qibla-needle"></i></div>
-    <div>
-      <p class="qibla-angle" id="qibla-angle">—</p>
-      <p class="muted small" id="qibla-distance"></p>
-    </div>
-  </section>
+
+  <p class="notice" id="daily-warning" hidden>Some times at this latitude are estimated or unavailable.</p>
+  <ul class="prayer-timeline" id="daily-timeline" aria-label="Daily schedule" aria-busy="false">
+    {% for key, label in [('fajr', 'Fajr'), ('zuhr', 'Ẓuhr'), ('asr', 'ʿAṣr'), ('maghrib', 'Maghrib'), ('isha', 'ʿIshāʾ')] %}
+    <li data-prayer-row="{{ key }}"><span>{{ label }}</span><strong id="time-{{ key }}">—</strong></li>
+    {% endfor %}
+  </ul>
+
+  <div class="prayer-sheet-footer">
+    <dl class="solar-strip">
+      {% for key, label in [('sunrise', 'Sunrise'), ('sunset', 'Sunset'), ('midnight', 'Midnight')] %}
+      <div><dt>{{ label }}</dt><dd id="time-{{ key }}">—</dd></div>
+      {% endfor %}
+    </dl>
+    <p id="daily-status" class="small status" role="status"></p>
+  </div>
 </section>
 
-<div class="daily-grid">
-  <section class="panel" aria-labelledby="schedule-title">
-    <div class="panel-heading">
-      <div>
-        <h2 id="schedule-title">Daily schedule</h2>
-        <p class="muted small" id="daily-hijri"></p>
-      </div>
-      <label class="inline-label">Date <input type="date" id="daily-date" required min="1900-01-01" max="2100-12-31"></label>
-    </div>
-    <p class="notice" id="daily-warning" hidden>Some times at this latitude are estimated or unavailable.</p>
-    <table class="daily-table" aria-label="Daily prayer and solar times" aria-busy="false" id="daily-table">
-      <tbody>
-        {% for key, label in [('fajr', 'Fajr'), ('sunrise', 'Sunrise'), ('zuhr', 'Ẓuhr'), ('asr', 'ʿAṣr'), ('sunset', 'Sunset'), ('maghrib', 'Maghrib'), ('isha', 'ʿIshāʾ'), ('midnight', 'Midnight')] %}
-        <tr {% if key in ('sunrise', 'sunset', 'midnight') %}class="solar-row"{% endif %} data-prayer-row="{{ key }}"><th scope="row">{{ label }}</th><td id="time-{{ key }}">—</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    <p id="daily-status" class="small status" role="status"></p>
-  </section>
-
-  <form class="panel control-panel" id="daily-location">
+<div class="daily-tools">
+  <form class="daily-settings" id="daily-location">
     <h2>Location and method</h2>
-    {{ location_fields() }}
-    <label>Calculation method <select id="daily-method">{{ method_options(custom=true) }}</select></label>
+    <div class="fields two-fields">
+      <div class="location-fields">{{ location_fields() }}</div>
+      <label>Calculation method <select id="daily-method">{{ method_options(custom=true) }}</select></label>
+    </div>
     <details class="coordinate-fields" id="daily-advanced">
       <summary>Advanced calculation settings</summary>
-      <div class="fields" id="advanced-fields">
+      <div class="fields two-fields" id="advanced-fields">
         <label>ʿAṣr calculation <select id="daily-asr">{{ asr_options() }}</select></label>
         <label>Midnight <select id="daily-midnight">
           <option value="">Method default</option><option value="0">Sunset to sunrise</option><option value="1">Sunset to Fajr</option>
         </select></label>
-        <div class="fields three-fields" id="custom-angles" hidden>
+        <div class="fields three-fields full-width" id="custom-angles" hidden>
           <label>Fajr angle <input id="fajr-angle" type="number" min="0" max="90" step="any" placeholder="15"></label>
           <label>Maghrib angle <input id="maghrib-angle" type="number" min="0" max="90" step="any" placeholder="0"></label>
           <label>ʿIshāʾ angle <input id="isha-angle" type="number" min="0" max="90" step="any" placeholder="15"></label>
         </div>
       </div>
     </details>
-    <button class="button button-primary" type="submit">Update prayer times</button>
-    <a id="daily-map-link" class="quiet-link small" target="_blank" rel="noopener noreferrer" hidden>View location on OpenStreetMap</a>
+    <div class="button-row">
+      <button class="button button-primary" type="submit">Update prayer times</button>
+      <a id="daily-map-link" class="quiet-link small" target="_blank" rel="noopener noreferrer" hidden>View location on OpenStreetMap</a>
+    </div>
   </form>
-</div>
 
-<section class="callout">
-  <div><h2>Prayer Calendar</h2><p class="muted">Build and download a timetable for your city or mosque.</p></div>
-  <a class="button button-subtle" href="{{ url_for('pages.calendar_page') }}">Open Prayer Calendar</a>
-</section>
+  <section class="qibla-section" aria-labelledby="qibla-title">
+    <div>
+      <h2 id="qibla-title">Qibla direction</h2>
+      <p class="qibla-angle" id="qibla-angle">—</p>
+      <p class="muted small">From true north</p>
+      <p class="muted small" id="qibla-distance"></p>
+    </div>
+    <div class="qibla-dial" aria-hidden="true">
+      <span class="dial-north">N</span><span class="dial-east">E</span>
+      <span class="dial-south">S</span><span class="dial-west">W</span>
+      <span class="qibla-needle" id="qibla-needle"></span>
+    </div>
+  </section>
+</div>
 {% endblock %}
 
 {% block scripts %}
