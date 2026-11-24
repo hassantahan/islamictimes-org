@@ -1,7 +1,7 @@
-{% macro location_fields(placeholder="Choose a city", map_link=true) %}
+{% macro location_fields(placeholder="Choose a city", map_link=true, allow_blank=true) %}
   <label>City
     <select data-city>
-      <option value="">{{ placeholder }}</option>
+      {% if allow_blank %}<option value="">{{ placeholder }}</option>{% endif %}
       <option value="custom">Coordinates</option>
     </select>
   </label>

@@ -4,11 +4,11 @@
 
 {% block content %}
 <section class="page-heading daily-heading">
-  <h1>Prayer times</h1>
+  <h1>Prayer Times</h1>
   <div class="daily-date-group">
     <div class="day-dates">
       <time id="hero-date"></time>
-      <p class="muted" id="daily-hijri"></p>
+      <p id="daily-hijri"></p>
     </div>
     <div class="date-control">
       <input type="date" id="daily-date" aria-label="Date" required min="1900-01-01" max="2100-12-31">
@@ -24,7 +24,7 @@
 </section>
 
 <section class="prayer-sheet" aria-label="Daily prayer times">
-  <div class="prayer-clock">
+  <div class="prayer-clock" id="prayer-clock">
     <div class="clock-copy">
       <p class="clock-label" id="hero-label">Next prayer</p>
       <h2 id="hero-prayer">—</h2>
@@ -32,6 +32,17 @@
     <div class="clock-reading">
       <p class="clock-time" id="hero-time">—</p>
       <p class="clock-day small" id="hero-day" hidden>Tomorrow</p>
+    </div>
+    <div class="hero-fadilah" id="hero-fadilah" hidden>
+      <p class="clock-label">Faḍīlah</p>
+      <dl>
+        {% for key, label in [('zuhr', 'Ẓuhr'), ('asr', 'ʿAṣr')] %}
+        <div data-hero-fadilah="{{ key }}" hidden>
+          <dt>{{ label }}</dt>
+          <dd><span data-fadilah-range></span><span class="hero-fadilah-now" data-fadilah-now hidden>Now</span></dd>
+        </div>
+        {% endfor %}
+      </dl>
     </div>
   </div>
 
@@ -50,12 +61,12 @@
           </div>
           <span data-fadilah-range></span>
           <div class="fadilah-tile" id="fadilah-note-{{ key }}" popover aria-label="{{ label }} faḍīlah">
-            <p>Preferred by <b data-fadilah-preferred></b></p>
-            <p><a href="https://www.sistani.org/persian/book/26575/6324/">Sayyid Sistani</a></p>
-            <p class="muted">Estimate · ordinary conditions</p>
+            <p>Faḍīlah is the part of {{ label }}’s prayer time when offering it is especially recommended.</p>
+            <p>For {{ label }}, it is better to pray by <b data-fadilah-preferred></b>.</p>
             {% if key == "asr" %}
-            <p class="muted"><a href="https://www.sistani.org/persian/book/26575/6319/">Shared time with Ẓuhr</a></p>
+            <p>You may offer ʿAṣr after praying Ẓuhr, even before the timetable’s ʿAṣr time.</p>
             {% endif %}
+            <p><a href="https://www.sistani.org/persian/book/26575/6324/">Sayyid Sistani · {{ label }} (ruling 966)</a></p>
           </div>
         </div>
         {% endif %}
@@ -83,13 +94,11 @@
         <path d="m6 3.5 4.5 4.5L6 12.5"></path>
       </svg>
     </button>
-    <p class="muted small" id="example-location">Example location</p>
-    <details class="location-map" id="daily-map">
-      <summary title="OpenStreetMap · Approximate location">Map</summary>
-      <p class="muted small" id="map-notice">Approximate · OpenStreetMap</p>
-      <iframe id="daily-map-frame" title="Approximate location on OpenStreetMap" referrerpolicy="no-referrer" hidden></iframe>
+    <div class="location-map">
+      <iframe id="daily-map-frame" title="Approximate location on OpenStreetMap" referrerpolicy="no-referrer" credentialless hidden></iframe>
+      <p class="muted small" id="map-notice" hidden>Map unavailable at this latitude.</p>
       <a id="daily-map-link" class="quiet-link small" target="_blank" rel="noopener noreferrer" aria-label="Open in OpenStreetMap" hidden>Open map</a>
-    </details>
+    </div>
   </section>
 
   <section class="qibla-section" aria-labelledby="qibla-title">
@@ -112,7 +121,7 @@
     <button class="icon-button dialog-close" type="submit" aria-label="Close location">×</button>
   </form>
   <div class="location-fields" id="daily-location">
-    {{ location_fields("Toronto (example)", map_link=false) }}
+    {{ location_fields(map_link=false, allow_blank=false) }}
   </div>
   <p class="small status" id="location-error" role="status"></p>
 </dialog>

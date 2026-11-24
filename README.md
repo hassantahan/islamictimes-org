@@ -24,7 +24,7 @@ Until v3.2.0 is published, install the v3.2.0 wheel for your platform or the sou
 - iCalendar includes the five daily prayer events. CSV also includes solar markers, a calculated Hijri date, local offsets, and estimated-time indicators.
 - The daily timetable updates when its date, location, or calculation settings change. The Jaʿfarī and Tehran presets show available Ẓuhr and ʿAṣr faḍīlah estimates beside the prayer times. Use the asterisks to see sources and earlier recommended limits.
 - **Remember settings** is off by default. When enabled, browser storage holds appearance, clock format, the selected city, prayer settings, and profiles. Exact coordinates are used only for the current visit. Users can turn saving off or clear saved data from Settings.
-- The daily schedule starts with a clearly labeled Toronto example. The **Map** disclosure contacts OpenStreetMap with an approximate location only when opened. OpenStreetMap links and the public Crescent Visibility images use external services.
+- The daily schedule defaults to Toronto. Its map loads OpenStreetMap with coordinates rounded to two decimal places and omits the referring page. The location picker offers a city, coordinates, or device location.
 - City selection uses a local list. Other locations can be entered as coordinates or set with device location.
 
 ## Application structure

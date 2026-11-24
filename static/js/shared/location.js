@@ -30,10 +30,6 @@ export function savedCity() {
   return Object.hasOwn(CITIES, city) ? city : "";
 }
 
-export function exampleLocation() {
-  return { ...CITIES.toronto, city: "", example: true };
-}
-
 export function rememberCity(location) {
   if (location.city) updatePreferences({ city: location.city });
 }
@@ -44,7 +40,7 @@ export function setMapLink(link, location) {
   link.hidden = false;
 }
 
-export function setupLocation(form) {
+export function setupLocation(form, defaultCity = "") {
   const city = form.querySelector("[data-city]");
   const lat = form.querySelector("[data-latitude]");
   const lon = form.querySelector("[data-longitude]");
@@ -55,7 +51,7 @@ export function setupLocation(form) {
   let fromDevice = false;
 
   for (const [key, place] of Object.entries(CITIES)) city.insertBefore(new Option(place.label, key), customOption);
-  city.value = savedCity();
+  city.value = savedCity() || defaultCity;
 
   function markCustom(deviceLocation = false) {
     city.value = "custom";
