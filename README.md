@@ -20,7 +20,7 @@ Until v3.2.0 is published, install the v3.2.0 wheel for your platform or the sou
 ## Prayer Calendar and privacy
 
 - Choose a city, coordinates, or device location. Device location requires a browser permission prompt and a secure context.
-- A mosque profile holds its name, calculation method, Asr convention, and signed minute offsets for the five daily prayers. A timetable can cover up to 366 days.
+- Jaʿfarī (Leva Institute) is the default prayer calculation method. Choose Custom angles to override the Fajr, Maghrib, or Isha angles. Blank fields use the Jaʿfarī angle. A mosque profile holds its name, calculation method, optional custom angles, Asr convention, and signed minute offsets for the five daily prayers. A timetable can cover up to 366 days.
 - iCalendar includes the five daily prayer events. CSV also includes solar markers, a calculated Hijri date, local offsets, and estimated-time indicators.
 - Preferences are off by default and live in browser storage when enabled. They cover appearance, clock format, a selected city, prayer settings, and profiles. The preference feature uses no cookies, account, or server-side profile store. Users can turn it off or clear their data from the Preferences dialog.
 - Coordinates are submitted in POST bodies only when the user requests a location calculation. The default daily schedule uses a clearly labeled Toronto example. Selecting an OpenStreetMap link opens that external website, and the Crescent Visibility page loads public images from the maps host.
@@ -42,7 +42,7 @@ Until v3.2.0 is published, install the v3.2.0 wheel for your platform or the sou
 - `POST /vis_calc`
 - `GET /maps_index`
 
-The calendar endpoints read the same JSON object. Required keys are `lat`, `lon`, `start`, and `end`. Optional keys include `method`, `asr_type` (0 for standard, 1 for Hanafi), and `profile` with `name` and `offset_minutes`. The preview returns JSON and the downloads return attachments. `POST /generate_map` is retired because the site uses precomputed maps.
+The calendar endpoints read the same JSON object. Required keys are `lat`, `lon`, `start`, and `end`. Optional keys include `method`, `asr_type` (0 for standard, 1 for Hanafi), and `profile` with `name` and `offset_minutes`. With `method: "CUSTOM"`, an optional `angles` object accepts `fajr_angle`, `maghrib_angle`, and `isha_angle` in degrees below the horizon. The preview returns JSON and the downloads return attachments. `POST /generate_map` is retired because the site uses precomputed maps.
 
 ### Tests
 

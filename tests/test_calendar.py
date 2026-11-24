@@ -66,6 +66,44 @@ class CalendarTests(unittest.TestCase):
                 after = datetime.fromisoformat(adjusted["prayers"][prayer]["time"])
                 self.assertEqual(after - before, timedelta(minutes=minutes))
 
+    def test_default_timetables_use_the_jafari_preset(self):
+        calendar = self.client.post(
+            "/calendar/schedule",
+            json={"lat": 43.65, "lon": -79.38, "start": "2026-11-24", "end": "2026-11-24"},
+        ).get_json()
+        daily = self.client.post(
+            "/prayer_times", json={"lat": 43.65, "lon": -79.38, "date": "2026-11-24"},
+        ).get_json()
+        self.assertIn("Jafari", calendar["method"])
+        self.assertIn("Jafari", daily["method"]["name"])
+        self.assertEqual(daily["method"]["midnight_type"], 1)
+        self.assertEqual(daily["method"]["maghrib_angle"]["decimal"], 4)
+        for key in ("fajr", "zuhr", "asr", "maghrib", "isha"):
+            self.assertEqual(calendar["days"][0]["prayers"][key]["time"],
+                             datetime.fromisoformat(daily[key]["time"]).isoformat(timespec="seconds"))
+
+    def test_custom_angles_match_daily_and_calendar_exports(self):
+        settings = {
+            "lat": 43.65, "lon": -79.38, "start": "2026-11-24", "end": "2026-11-24",
+            "method": "CUSTOM", "angles": {"fajr_angle": 17.2, "maghrib_angle": 5},
+        }
+        calendar = self.client.post("/calendar/schedule", json=settings)
+        self.assertEqual(calendar.status_code, 200)
+        daily = self.client.post(
+            "/prayer_times", json={
+                "lat": settings["lat"], "lon": settings["lon"], "date": settings["start"],
+                "method": {"name": "CUSTOM", "midnight_type": "preset", **settings["angles"]},
+            },
+        ).get_json()
+        self.assertEqual(daily["method"]["isha_angle"]["decimal"], 14)
+        self.assertEqual(calendar.get_json()["method"], "Custom")
+        exported = self.client.post("/calendar/export/csv", json=settings)
+        self.assertEqual(exported.status_code, 200)
+        row = next(csv.DictReader(StringIO(exported.get_data(as_text=True))))
+        for key in ("fajr", "maghrib", "isha"):
+            self.assertEqual(calendar.get_json()["days"][0]["prayers"][key]["time"], row[key])
+            self.assertEqual(datetime.fromisoformat(daily[key]["time"]).isoformat(timespec="seconds"), row[key])
+
     def test_adjusted_event_can_cross_midnight(self):
         settings = {**self.settings, "lat": 59.33, "lon": 18.07, "start": "2026-06-17", "end": "2026-06-17",
                     "profile": {"name": "Stockholm timetable", "offset_minutes": {"isha": 180}}}
@@ -80,6 +118,10 @@ class CalendarTests(unittest.TestCase):
             {"lat": "NaN"}, {"lat": 91}, {"method": "unsupported"}, {"asr_type": True},
             {"start": "20260307"}, {"start": "1800-03-07"}, {"end": "2026-03-06"}, {"end": "2028-03-07"},
             {"profile": []}, {"profile": {"name": "line\nbreak"}},
+            {"method": "CUSTOM", "angles": {"fajr_angle": 0}},
+            {"method": "CUSTOM", "angles": {"isha_angle": "nan"}},
+            {"method": "CUSTOM", "angles": {"asr_angle": 6}},
+            {"angles": {"fajr_angle": 17}},
             {"profile": {"offset_minutes": {"sunrise": 4}}},
             {"profile": {"offset_minutes": {"fajr": 0.5}}},
             {"profile": {"offset_minutes": {"fajr": 181}}},

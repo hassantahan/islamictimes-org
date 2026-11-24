@@ -45,6 +45,41 @@ export function formatTime(iso) {
   return (number % 12 || 12) + ":" + minute + (number < 12 ? " AM" : " PM");
 }
 
+export function setupCustomAngles(method, group) {
+  const inputs = [...group.querySelectorAll("[data-prayer-angle]")];
+
+  const sync = () => {
+    const custom = method.value === "CUSTOM";
+    group.hidden = !custom;
+    for (const input of inputs) input.disabled = !custom;
+  };
+
+  method.addEventListener("change", () => {
+    sync();
+    if (!group.hidden) group.closest("details")?.setAttribute("open", "");
+  });
+  return {
+    apply(settings) {
+      for (const input of inputs) {
+        const value = settings?.[input.dataset.prayerAngle];
+        input.value = Number.isFinite(value) && value > 0 && value <= 90 ? value : "";
+      }
+      sync();
+    },
+    read() {
+      const angles = {};
+      for (const input of inputs) {
+        if (input.disabled) continue;
+        if (!input.reportValidity() || input.valueAsNumber <= 0) {
+          throw new Error("Angles must be greater than 0° and at most 90°.");
+        }
+        if (input.value !== "") angles[input.dataset.prayerAngle] = input.valueAsNumber;
+      }
+      return angles;
+    },
+  };
+}
+
 export function applySelect(select, value) {
   if ([...select.options].some((option) => option.value === String(value))) select.value = String(value);
 }

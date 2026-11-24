@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_forms.html" import location_fields, method_options, asr_options %}
+{% from "_forms.html" import location_fields, method_options, asr_options, angle_fields %}
 {% block title %}Prayer Times · Islamic Times{% endblock %}
 
 {% block content %}
@@ -67,11 +67,7 @@
         <label>Midnight <select id="daily-midnight">
           <option value="">Method default</option><option value="0">Sunset to sunrise</option><option value="1">Sunset to Fajr</option>
         </select></label>
-        <div class="fields three-fields full-width" id="custom-angles" hidden>
-          <label>Fajr angle <input id="fajr-angle" type="number" min="0" max="90" step="any" placeholder="15"></label>
-          <label>Maghrib angle <input id="maghrib-angle" type="number" min="0" max="90" step="any" placeholder="0"></label>
-          <label>ʿIshāʾ angle <input id="isha-angle" type="number" min="0" max="90" step="any" placeholder="15"></label>
-        </div>
+        {{ angle_fields() }}
       </div>
     </details>
     <div class="button-row">

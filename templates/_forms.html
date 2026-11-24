@@ -18,14 +18,22 @@
 {% endmacro %}
 
 {% macro method_options(custom=false) %}
+  <option value="JAFARI">Jaʿfarī (Leva Institute)</option>
   <option value="ISNA">Islamic Society of North America (ISNA)</option>
   <option value="MWL">Muslim World League</option>
   <option value="MAKKAH">Umm al-Qura (Makkah)</option>
   <option value="EGYPT">Egyptian General Authority</option>
   <option value="KARACHI">University of Islamic Sciences (Karachi)</option>
   <option value="TEHRAN">University of Tehran</option>
-  <option value="JAFARI">Leva Institute (Jaʿfarī)</option>
   {% if custom %}<option value="CUSTOM">Custom angles</option>{% endif %}
+{% endmacro %}
+
+{% macro angle_fields(prefix="") %}
+  <div class="fields three-fields full-width" id="{{ prefix }}custom-angles" hidden>
+    {% for key, label, default in [('fajr', 'Fajr', 16), ('maghrib', 'Maghrib', 4), ('isha', 'ʿIshāʾ', 14)] %}
+      <label>{{ label }} angle <input id="{{ prefix }}{{ key }}-angle" data-prayer-angle="{{ key }}_angle" type="number" min="0" max="90" step="any" placeholder="{{ default }}" disabled></label>
+    {% endfor %}
+  </div>
 {% endmacro %}
 
 {% macro asr_options() %}

@@ -1,6 +1,6 @@
 import { exampleLocation, rememberCity, setMapLink, setupLocation } from "./shared/location.js";
 import { getPreferences, updatePreferences } from "./shared/preferences.js";
-import { apiResponse, applySelect, civilDate, formatTime, localISO, PRAYERS, shiftDate } from "./shared/timetable.js";
+import { apiResponse, applySelect, civilDate, formatTime, localISO, PRAYERS, setupCustomAngles, shiftDate } from "./shared/timetable.js";
 
 const byId = (id) => document.getElementById(id);
 const form = byId("daily-location");
@@ -9,9 +9,7 @@ const date = byId("daily-date");
 const method = byId("daily-method");
 const asr = byId("daily-asr");
 const midnight = byId("daily-midnight");
-const angleInputs = {
-  fajr_angle: byId("fajr-angle"), maghrib_angle: byId("maghrib-angle"), isha_angle: byId("isha-angle"),
-};
+const angles = setupCustomAngles(method, byId("custom-angles"));
 const status = byId("daily-status");
 const timeline = byId("daily-timeline");
 const prayerRows = [...timeline.querySelectorAll("[data-prayer-row]")];
@@ -26,21 +24,12 @@ let tomorrow;
 let tomorrowPending = false;
 let activeRequest;
 
-function syncAngles() {
-  const custom = method.value === "CUSTOM";
-  byId("custom-angles").hidden = !custom;
-  Object.values(angleInputs).forEach((input) => { input.disabled = !custom; });
-}
 
 function applySettings(settings) {
-  applySelect(method, settings?.name || "ISNA");
+  applySelect(method, settings?.name || method.options[0].value);
   applySelect(asr, settings?.asr_type ?? 0);
   applySelect(midnight, settings?.midnight_type === "preset" ? "" : settings?.midnight_type ?? "");
-  for (const [name, input] of Object.entries(angleInputs)) {
-    const value = settings?.[name];
-    input.value = Number.isFinite(value) ? value : "";
-  }
-  syncAngles();
+  angles.apply(settings);
 }
 
 function readSettings() {
@@ -49,13 +38,7 @@ function readSettings() {
     asr_type: Number(asr.value),
     midnight_type: midnight.value === "" ? "preset" : Number(midnight.value),
   };
-  if (settings.name === "CUSTOM") {
-    const defaults = { fajr_angle: 15, maghrib_angle: 0, isha_angle: 15 };
-    for (const [name, input] of Object.entries(angleInputs)) {
-      settings[name] = input.value ? input.valueAsNumber : defaults[name];
-    }
-  }
-  return settings;
+  return { ...settings, ...angles.read() };
 }
 
 let appliedSettings = getPreferences().daily;
@@ -149,7 +132,6 @@ async function refresh(forDate, save = false) {
   }
 }
 
-method.addEventListener("change", syncAngles);
 date.addEventListener("change", () => {
   if (!date.reportValidity()) return;
   followToday = result ? date.value === localISO(new Date(), result.timezone) : false;
@@ -159,8 +141,9 @@ form.addEventListener("submit", (event) => {
   event.preventDefault();
   try {
     const newLocation = locationFields.read();
+    const settings = readSettings();
     location = newLocation;
-    appliedSettings = readSettings();
+    appliedSettings = settings;
     refresh(followToday ? undefined : date.value, true);
   } catch (error) {
     status.textContent = error.message;

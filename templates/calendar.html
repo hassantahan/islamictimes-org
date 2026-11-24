@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_forms.html" import location_fields, method_options, asr_options %}
+{% from "_forms.html" import location_fields, method_options, asr_options, angle_fields %}
 {% block title %}Prayer Calendar · Islamic Times{% endblock %}
 
 {% block content %}
@@ -19,8 +19,9 @@
     <summary>Calculation settings and mosque profiles</summary>
     <div class="fields calendar-methods">
       <label>Mosque profile <select id="profile-select"><option value="">No saved profile</option></select></label>
-      <label>Calculation method <select id="calendar-method">{{ method_options() }}</select></label>
+      <label>Calculation method <select id="calendar-method">{{ method_options(custom=true) }}</select></label>
       <label>ʿAṣr calculation <select id="calendar-asr">{{ asr_options() }}</select></label>
+      {{ angle_fields("calendar-") }}
     </div>
 
     <details class="coordinate-fields" id="profile-editor">

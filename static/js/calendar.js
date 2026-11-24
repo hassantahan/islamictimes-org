@@ -1,6 +1,6 @@
 import { rememberCity, setupLocation } from "./shared/location.js";
 import { getPreferences, remembersPreferences, updatePreferences } from "./shared/preferences.js";
-import { apiResponse, applySelect, civilDate, formatTime, localISO, PRAYERS } from "./shared/timetable.js";
+import { apiResponse, applySelect, civilDate, formatTime, localISO, PRAYERS, setupCustomAngles } from "./shared/timetable.js";
 
 const byId = (id) => document.getElementById(id);
 const form = byId("calendar-form");
@@ -12,6 +12,7 @@ const profileEditor = byId("profile-editor");
 const profileName = byId("profile-name");
 const method = byId("calendar-method");
 const asr = byId("calendar-asr");
+const angles = setupCustomAngles(method, byId("calendar-custom-angles"));
 const offsets = [...form.querySelectorAll("[data-offset]")];
 const profileStatus = byId("profile-status");
 const saveProfile = byId("save-profile");
@@ -46,14 +47,22 @@ function syncProfileOptions(selected = profileSelect.value) {
 
 function applyProfile() {
   const profile = profiles.find(({ id }) => id === profileSelect.value);
-  const setting = profile || getPreferences().calendar;
-  applySelect(method, "ISNA");
-  applySelect(method, setting?.method ?? getPreferences().daily?.name);
-  applySelect(asr, setting?.asr_type ?? getPreferences().daily?.asr_type ?? 0);
+  const daily = getPreferences().daily;
+  const setting = profile ?? getPreferences().calendar;
+  applySelect(method, method.options[0].value);
+  applySelect(method, setting?.method ?? daily?.name);
+  applySelect(asr, setting?.asr_type ?? daily?.asr_type ?? 0);
+  angles.apply(setting ? setting.angles : daily);
   profileName.value = profile?.name || "";
   for (const input of offsets) input.value = profile?.offset_minutes?.[input.dataset.offset] ?? 0;
   profileStatus.textContent = "";
   if (profile) profileEditor.open = true;
+}
+
+function readCalculation() {
+  const settings = { method: method.value, asr_type: Number(asr.value) };
+  if (method.value === "CUSTOM") settings.angles = angles.read();
+  return settings;
 }
 
 function readProfile(requireName) {
@@ -130,7 +139,7 @@ saveProfile.addEventListener("click", () => {
       throw new Error("A profile already uses this name.");
     }
     const id = existingId || crypto.randomUUID();
-    const saved = { id, ...data, method: method.value, asr_type: Number(asr.value) };
+    const saved = { id, ...data, ...readCalculation() };
     updatePreferences({ profiles: existingId ? profiles.map((profile) => profile.id === id ? saved : profile) : [...profiles, saved] });
     syncProfileOptions(id);
     profileStatus.textContent = remembersPreferences() ? "Profile saved in this browser." : "Profile added for this page. Enable remembering in Preferences to keep it.";
@@ -158,17 +167,18 @@ form.addEventListener("submit", async (event) => {
   event.preventDefault();
   let location;
   let input;
+  let calculation;
   try {
     location = locationFields.read();
     const range = (Date.parse(end.value) - Date.parse(start.value)) / 86400000;
     if (range < 0 || range >= 366) throw new Error("Choose an inclusive date range of up to 366 days.");
+    calculation = readCalculation();
     input = {
       lat: location.lat,
       lon: location.lon,
       start: start.value,
       end: end.value,
-      method: method.value,
-      asr_type: Number(asr.value),
+      ...calculation,
       profile: readProfile(false),
     };
   } catch (error) {
@@ -188,7 +198,7 @@ form.addEventListener("submit", async (event) => {
     result = data;
     snapshot = input;
     rememberCity(location);
-    updatePreferences({ calendar: { method: input.method, asr_type: input.asr_type } });
+    updatePreferences({ calendar: calculation });
     metadata.textContent = location.label + " · " + data.timezone + (input.profile.name !== "Islamic Times" ? " · " + data.profile : "");
     renderRows();
     wrapper.hidden = false;

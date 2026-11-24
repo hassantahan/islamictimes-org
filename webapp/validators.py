@@ -5,6 +5,8 @@ from math import isfinite
 
 from webapp.errors import ApiError
 
+PRAYER_ANGLE_FIELDS = ("fajr_angle", "maghrib_angle", "isha_angle")
+
 
 def require_json_object(payload: object) -> dict:
     if not isinstance(payload, dict):
@@ -29,6 +31,18 @@ def parse_float(payload: dict, key: str, *, minimum: float | None = None, maximu
     if maximum is not None and num > maximum:
         raise ApiError(f"Field '{key}' must be <= {maximum}.")
     return num
+
+
+def parse_prayer_angles(payload: dict) -> dict[str, float]:
+    angles = {}
+    for field in PRAYER_ANGLE_FIELDS:
+        if payload.get(field) in (None, ""):
+            continue
+        angle = parse_float(payload, field, maximum=90)
+        if angle <= 0:
+            raise ApiError(f"Field '{field}' must be greater than 0.")
+        angles[field] = angle
+    return angles
 
 
 def parse_int(payload: dict, key: str, *, minimum: int | None = None, maximum: int | None = None) -> int:

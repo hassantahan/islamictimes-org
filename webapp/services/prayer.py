@@ -2,16 +2,17 @@ from __future__ import annotations
 
 import math
 import warnings
-from datetime import datetime
+from datetime import datetime, time
 from zoneinfo import ZoneInfo
 
 from islamic_times.islamic_times import ITLocation
 from islamic_times.it_dataclasses import DistanceUnits
 from timezonefinder import TimezoneFinder
 
+from webapp.config import DEFAULT_PRAYER_METHOD
 from webapp.errors import ApiError
 from webapp.services.hijri import HIJRI_MONTH_NAMES
-from webapp.validators import parse_float, parse_iso_date
+from webapp.validators import parse_float, parse_iso_date, parse_prayer_angles
 
 _tf = TimezoneFinder()
 
@@ -31,18 +32,6 @@ def _format_prayer(prayer) -> dict[str, str]:
         tstr = str(t)
     return {"name": prayer.name, "time": tstr}
 
-
-def _optional_angle(value, field_name: str) -> float | None:
-    if value is None or value == "":
-        return None
-    try:
-        angle = float(value)
-    except (TypeError, ValueError):
-        raise ApiError(f"Field '{field_name}' must be a number.") from None
-
-    if not 0 <= angle <= 90:
-        raise ApiError(f"Field '{field_name}' must be between 0 and 90.")
-    return angle
 
 
 def _optional_binary_int(value, field_name: str, default: int = 0) -> int:
@@ -98,40 +87,38 @@ def _build_itlocation(payload: dict) -> ITLocation:
 
     date_str = payload.get("date")
     if date_str:
-        local_date = parse_iso_date(str(date_str), field_name="date")
-        base_dt = local_date.replace(tzinfo=tz)
+        local_date = parse_iso_date(str(date_str), field_name="date").date()
     else:
-        base_dt = datetime.now(tz)
+        local_date = datetime.now(tz).date()
+    # Match the observer-local noon used by the library's date-range schedule.
+    base_dt = datetime.combine(local_date, time(12), tz)
 
-    loc = ITLocation(latitude=lat, longitude=lon, date=base_dt)
+    loc = ITLocation(latitude=lat, longitude=lon, date=base_dt, method=DEFAULT_PRAYER_METHOD)
 
     method_payload = payload.get("method", {})
     if method_payload is None:
         method_payload = {}
     if not isinstance(method_payload, dict):
         raise ApiError("Field 'method' must be an object.")
+    if not method_payload:
+        return loc
 
     method_name = str(method_payload.get("name", "")).upper().strip()
     asr_type = _optional_binary_int(method_payload.get("asr_type"), "method.asr_type", default=0)
-    # An explicit preset selection uses the method's midnight convention.
-    # Existing callers omitting this key still receive sunset-to-sunrise.
+    # Unconfigured requests use the default preset as-is. Explicit methods
+    # that omit midnight_type keep the legacy sunset-to-sunrise convention.
     midnight_raw = method_payload.get("midnight_type")
-    midnight_type = None if midnight_raw == "preset" else _optional_binary_int(midnight_raw, "method.midnight_type")
+    midnight_type = None
+    if midnight_raw != "preset":
+        midnight_type = _optional_binary_int(midnight_raw, "method.midnight_type")
 
     try:
         if method_name and method_name not in ("CUSTOM",):
             loc.set_prayer_method(method_name, asr_type=asr_type)
         else:
-            fajr_angle = _optional_angle(method_payload.get("fajr_angle"), "method.fajr_angle")
-            maghrib_angle = _optional_angle(method_payload.get("maghrib_angle"), "method.maghrib_angle")
-            isha_angle = _optional_angle(method_payload.get("isha_angle"), "method.isha_angle")
-
-            if any(v is not None for v in (fajr_angle, maghrib_angle, isha_angle)):
-                loc.set_custom_prayer_angles(
-                    fajr_angle=fajr_angle,
-                    maghrib_angle=maghrib_angle,
-                    isha_angle=isha_angle,
-                )
+            angles = parse_prayer_angles(method_payload)
+            if angles:
+                loc.set_custom_prayer_angles(**angles)
 
             loc.set_asr_type(asr_type)
         # User override should apply regardless of preset/custom method path.

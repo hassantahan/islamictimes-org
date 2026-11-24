@@ -3,6 +3,9 @@ from __future__ import annotations
 import os
 
 
+DEFAULT_PRAYER_METHOD = "JAFARI"
+
+
 class Config:
     MAPS_BASE = os.getenv("MAPS_BASE", "https://islamictimes-maps.onrender.com")
     MAPS_INDEX_CACHE_TTL = int(os.getenv("MAPS_INDEX_CACHE_TTL", "3600"))

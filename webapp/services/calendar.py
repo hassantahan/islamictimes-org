@@ -6,14 +6,15 @@ from dataclasses import replace
 from datetime import date, datetime, time
 
 from islamic_times.islamic_times import ITLocation
-from islamic_times.it_dataclasses import PRAYER_KEYS, PrayerDay
+from islamic_times.it_dataclasses import PRAYER_KEYS, Angle, PrayerDay
 from islamic_times.prayer_profiles import MosqueProfile
 from islamic_times.prayer_times import get_prayer_method
 
+from webapp.config import DEFAULT_PRAYER_METHOD
 from webapp.errors import ApiError
 from webapp.services.hijri import HIJRI_MONTH_NAMES
 from webapp.services.prayer import lookup_tz
-from webapp.validators import parse_float, require_json_object
+from webapp.validators import PRAYER_ANGLE_FIELDS, parse_float, parse_prayer_angles, require_json_object
 
 MAX_SCHEDULE_DAYS = 366
 MAX_PRAYER_OFFSET = 180
@@ -33,16 +34,26 @@ def _calendar_date(payload: dict, field: str) -> date:
 
 
 def _profile(payload: dict) -> MosqueProfile:
-    method_name = payload.get("method", "ISNA")
+    method_name = payload.get("method", DEFAULT_PRAYER_METHOD)
     if not isinstance(method_name, str) or len(method_name) > 40:
         raise ApiError("Choose a prayer calculation method.")
     asr_type = payload.get("asr_type", 0)
     if type(asr_type) is not int or asr_type not in (0, 1):
         raise ApiError("Choose standard or Hanafi Asr.")
-    try:
-        method = replace(get_prayer_method(method_name), asr_type=asr_type)
-    except ValueError:
-        raise ApiError("Choose a supported prayer calculation method.") from None
+    angles = require_json_object(payload.get("angles", {}))
+    if angles.keys() - set(PRAYER_ANGLE_FIELDS):
+        raise ApiError("Custom angles are available for Fajr, Maghrib, and Isha.")
+
+    if method_name.strip().upper() == "CUSTOM":
+        overrides = {key: Angle(value) for key, value in parse_prayer_angles(angles).items()}
+        method = replace(get_prayer_method(DEFAULT_PRAYER_METHOD), name="Custom", asr_type=asr_type, **overrides)
+    else:
+        if angles:
+            raise ApiError("Select Custom angles before entering angle overrides.")
+        try:
+            method = replace(get_prayer_method(method_name), asr_type=asr_type)
+        except ValueError:
+            raise ApiError("Choose a supported prayer calculation method.") from None
 
     profile = require_json_object(payload.get("profile", {}))
     name = profile.get("name", "Islamic Times")
