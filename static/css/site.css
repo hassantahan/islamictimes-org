@@ -162,6 +162,7 @@ select {
 .clock-copy h2 { font-size: clamp(1.55rem, 3.7vw, 2.55rem); font-weight: 570; }
 .clock-reading { position: relative; }
 .clock-time { font-size: clamp(2.9rem, 6.1vw, 5rem); font-weight: 475; line-height: .97; letter-spacing: -.05em; font-variant-numeric: lining-nums tabular-nums; }
+.clock-time.clock-range { font-size: clamp(1.6rem, 4.8vw, 3.9rem); letter-spacing: -.035em; }
 .clock-day { color: var(--clock-muted); }
 .current-prayer { min-width: 9rem; margin-inline-start: auto; padding-inline-start: clamp(.8rem, 3vw, 1.7rem); border-inline-start: 1px solid var(--control); }
 #current-prayer-name { font-size: 1.3rem; font-weight: 575; }
@@ -172,9 +173,13 @@ select {
 .prayer-name { color: var(--muted); font-size: .9rem; font-weight: 630; }
 .prayer-reading { display: flex; align-items: end; justify-content: space-between; flex-wrap: wrap; gap: .35rem .5rem; }
 .prayer-time { font-size: clamp(1.05rem, 3.2vw, 1.95rem); font-weight: 550; line-height: 1.15; white-space: nowrap; }
+.asr-preferred-label { margin-inline-start: .3rem; font-size: .75rem; font-weight: 500; }
+.prayer-time.asr-fallback { font-size: 1rem; }
 .fadilah-window { display: grid; margin-inline-start: auto; color: var(--muted); text-align: end; font-size: .76rem; }
 .fadilah-range { min-height: 1.5rem; padding: .1rem 0; border: 0; color: inherit; background: transparent; font-size: .86rem; font-weight: 570; white-space: nowrap; text-decoration: underline dotted; text-underline-offset: .22em; }
 .fadilah-range:hover, .fadilah-range[aria-expanded="true"] { color: var(--ink); text-decoration-style: solid; }
+.fadilah-window.asr-window { margin-inline-start: 0; color: var(--ink); }
+.asr-window .fadilah-range { padding-block: 0; font-size: clamp(1rem, 2.05vw, 1.62rem); font-weight: 550; line-height: 1.15; text-align: start; text-decoration-thickness: 1px; white-space: normal; }
 .fadilah-tile { position: fixed; inset: auto; overflow: auto; width: min(17.5rem, calc(100% - 1.5rem)); margin: 0; padding: .75rem .9rem; border: 1px solid var(--line); border-radius: .45rem; background: var(--surface); box-shadow: 0 5px 22px #0002; color: var(--ink); text-align: start; font-size: .91rem; }
 .fadilah-tile h3 { font-size: 1.15rem; }
 .fadilah-tile p, .guide-copy p + p { margin-top: .55rem; }
@@ -276,6 +281,8 @@ select {
   .prayer-timeline li.next-row { border-inline-start-color: var(--accent); border-top-color: var(--line); }
   .prayer-timeline li.in-fadilah { border-inline-start-color: var(--fadilah-ink); border-top-color: var(--line); }
   .prayer-time { font-size: 1.2rem; }
+  .fadilah-window.asr-window { grid-column: 2 / -1; justify-self: start; }
+  .asr-window .fadilah-range { font-size: 1.15rem; }
   .prayer-reading { display: contents; }
 }
 @media (max-width: 36rem) {

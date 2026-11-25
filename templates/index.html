@@ -33,7 +33,7 @@
       <p class="clock-day small" id="hero-day" hidden>Tomorrow</p>
     </div>
     <div class="current-prayer" id="current-prayer" hidden>
-      <p class="clock-label">Current prayer</p>
+      <p class="clock-label" id="current-prayer-label">Current prayer</p>
       <p id="current-prayer-name">—</p>
     </div>
   </div>
@@ -42,11 +42,11 @@
   <ul class="prayer-timeline" id="daily-timeline" role="list" aria-label="Daily schedule" aria-busy="false">
     {% for key, label in [('fajr', 'Fajr'), ('zuhr', 'Ẓuhr'), ('asr', 'ʿAṣr'), ('maghrib', 'Maghrib'), ('isha', 'ʿIshāʾ')] %}
     <li data-prayer-row="{{ key }}">
-      <span class="prayer-name">{{ label }}</span>
+      <span class="prayer-name">{{ label }}{% if key == "asr" %} <span class="asr-preferred-label" id="asr-preferred-label" hidden>Preferred</span>{% endif %}</span>
       <div class="prayer-reading">
         <strong class="prayer-time" id="time-{{ key }}">—</strong>
         {% if key in ("zuhr", "asr") %}
-        <div class="fadilah-window" id="fadilah-{{ key }}" hidden>
+        <div class="fadilah-window{% if key == 'asr' %} asr-window{% endif %}" id="fadilah-{{ key }}" hidden>
           <button class="fadilah-range" type="button" popovertarget="fadilah-note-{{ key }}" aria-expanded="false"></button>
           <div class="fadilah-tile" id="fadilah-note-{{ key }}" popover aria-label="{{ label }} faḍīlah">
             <h3>{{ label }}</h3>
@@ -56,7 +56,7 @@
             </dl>
             {% if key == "asr" %}
             <p>Measure how much an upright object’s shadow grows after solar noon. The window opens at 2/7 of the object’s height and ends at 6/7. Praying by 4/7 is preferred.</p>
-            <p>ʿAṣr may be prayed after Ẓuhr. The main entry uses a shadow increase of <span id="asr-shadow-factor"></span>.</p>
+            <p>You may pray ʿAṣr as soon as you finish Ẓuhr. <a href="https://www.sistani.org/english/book/48/2209/">Prayer timing</a></p>
             {% else %}
             <p>The window starts at solar noon. It ends when an upright object’s shadow has grown by 4/7 of the object’s height. Praying by 2/7 is preferred.</p>
             {% endif %}
@@ -153,7 +153,7 @@
   </form>
   <div class="guide-copy">
     <p>Faḍīlah is the preferred window within the time a prayer may be offered.</p>
-    <p>The smaller ranges show the calculated windows for Ẓuhr and ʿAṣr. Open a range to see the shadow rules and the earlier recommended time.</p>
+    <p>Open a range to see the shadow rule and when it’s better to pray by.</p>
     <p>Sayyid Sistani gives separate guidance for intense heat.</p>
     <p><a href="https://www.sistani.org/persian/book/26575/6324/">Sayyid Sistani · rulings 966–967</a></p>
   </div>
@@ -166,7 +166,7 @@
   <details class="coordinate-fields" id="daily-advanced">
     <summary>Options</summary>
     <div class="fields two-fields">
-      <label>ʿAṣr <select id="daily-asr">{{ asr_options() }}</select></label>
+      <label id="daily-asr-option" hidden>ʿAṣr <select id="daily-asr">{{ asr_options() }}</select></label>
       <label>Midnight <select id="daily-midnight">
         <option value="">Method default</option><option value="0">Sunset to sunrise</option><option value="1">Sunset to Fajr</option>
       </select></label>

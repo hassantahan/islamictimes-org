@@ -20,6 +20,7 @@ const solarLabels = { sunrise: "Sunrise", sunset: "Sunset", midnight: "Midnight"
 const mapFrame = byId("daily-map-frame");
 const mapLink = byId("daily-map-link");
 const fadilahGuide = byId("open-fadilah-guide");
+const sharedAfternoonMethods = new Set(["JAFARI", "TEHRAN", "CUSTOM"]);
 const prayerCutoffs = { fajr: "sunrise", zuhr: "sunset", asr: "sunset", maghrib: "midnight", isha: "midnight" };
 
 let location = locationFields.read();
@@ -40,6 +41,7 @@ function applySettings(settings) {
 }
 
 function readSettings() {
+  byId("daily-asr-option").hidden = sharedAfternoonMethods.has(method.value);
   const settings = {
     name: method.value,
     asr_type: Number(asr.value),
@@ -74,11 +76,18 @@ function loadAdjacentDay(date) {
 }
 
 function candidates(day) {
+  if (!day) return [];
+  const sharedAfternoon = Object.hasOwn(day, "fadilah");
   return Object.entries(PRAYERS)
-    .map(([key, label]) => ({
-      key, label, time: day?.[key]?.time, when: Date.parse(day?.[key]?.time),
-      ends: Date.parse(day?.[prayerCutoffs[key]]?.time),
-    }))
+    .map(([key, label]) => {
+      const preferredWindow = sharedAfternoon && key === "asr" ? day.fadilah.asr : null;
+      const time = sharedAfternoon && key === "asr" ? preferredWindow?.start : day[key]?.time;
+      return {
+        key, label, time, date: day.date, preferredWindow,
+        when: Date.parse(time), ends: Date.parse(day[prayerCutoffs[key]]?.time),
+        shared: sharedAfternoon && key === "zuhr",
+      };
+    })
     .filter(({ when }) => Number.isFinite(when));
 }
 
@@ -101,25 +110,29 @@ function renderHero() {
     ? [...candidates(adjacentDays.get(yesterday)), ...prayers, ...candidates(adjacentDays.get(tomorrow))]
       .sort((left, right) => left.when - right.when)
     : prayers;
-  const upcoming = isToday ? schedule.find(({ when }) => when > now) : prayers[0];
-  const started = isToday ? schedule.findLast(({ when }) => when <= now) : null;
+  const upcoming = isToday ? schedule.find(({ when }) => when > now) : prayers.find(({ preferredWindow }) => !preferredWindow);
+  const started = isToday ? schedule.findLast(({ when, preferredWindow }) => when <= now && !preferredWindow) : null;
   const current = started && !(started.ends <= now) ? started : null;
+  const nextWindow = upcoming?.preferredWindow;
 
-  byId("hero-label").textContent = isToday ? "Next prayer" : "First prayer";
+  byId("hero-label").textContent = nextWindow ? "Next preferred window" : isToday ? "Next prayer" : "First prayer";
   byId("hero-prayer").textContent = upcoming?.label ?? "—";
-  byId("hero-time").textContent = formatTime(upcoming?.time);
+  const heroTime = byId("hero-time");
+  heroTime.classList.toggle("clock-range", !!nextWindow);
+  heroTime.textContent = nextWindow ? formatRange(nextWindow) : formatTime(upcoming?.time);
   byId("hero-day").hidden = !isToday || !upcoming || upcoming.time.slice(0, 10) <= today;
   byId("current-prayer").hidden = !isToday;
-  byId("current-prayer-name").textContent = current?.label ?? "Between prayers";
+  byId("current-prayer-label").textContent = current?.shared ? "Current prayers" : "Current prayer";
+  byId("current-prayer-name").textContent = current?.shared ? "Ẓuhr / ʿAṣr" : current?.label ?? "Between prayers";
   for (const row of prayerRows) {
     const key = row.dataset.prayerRow;
     const range = result.fadilah?.[key];
-    row.classList.toggle("next-row", isToday && key === upcoming?.key && result[key]?.time === upcoming.time);
+    row.classList.toggle("next-row", isToday && key === upcoming?.key && result.date === upcoming.date);
     row.classList.toggle("in-fadilah", !!(isToday && range && Date.parse(range.start) <= now && now < Date.parse(range.end)));
   }
 
   if (isToday) {
-    if (!prayers.some(({ when }) => when <= now)) loadAdjacentDay(yesterday);
+    if (!prayers.some(({ when, preferredWindow }) => when <= now && !preferredWindow)) loadAdjacentDay(yesterday);
     if (!upcoming) loadAdjacentDay(tomorrow);
   }
 }
@@ -185,12 +198,18 @@ function renderDaily() {
   byId("daily-heading-location").textContent = displayedLocation.label;
   const hijri = result.hijri;
   byId("daily-hijri").textContent = hijri.day + " " + hijri.month_name + " " + hijri.year + " AH";
-  byId("asr-shadow-factor").textContent = result.method.asr_type === 1 ? "twice the object’s height" : "the object’s full height";
   for (const key of Object.keys({ ...PRAYERS, ...solarLabels })) {
     const time = result[key]?.time;
     const nextDay = formatTime(time) !== "—" && time.slice(0, 10) > result.date;
     byId("time-" + key).textContent = formatTime(time) + (nextDay ? " (+1d)" : "");
   }
+  const sharedAfternoon = Object.hasOwn(result, "fadilah");
+  const asrTime = byId("time-asr");
+  const asrWindow = result.fadilah?.asr;
+  asrTime.hidden = !!asrWindow;
+  asrTime.classList.toggle("asr-fallback", sharedAfternoon);
+  byId("asr-preferred-label").hidden = !asrWindow;
+  if (sharedAfternoon) asrTime.textContent = Number.isFinite(Date.parse(result.zuhr?.time)) ? "After Ẓuhr" : "—";
   byId("daily-warning").hidden = !result.warnings.length;
   byId("qibla-angle").textContent = result.qibla.angle_decimal.toFixed(1) + "° " + result.qibla.cardinal;
   byId("qibla-distance").textContent = Math.round(result.qibla.distance_km).toLocaleString() + " km";
