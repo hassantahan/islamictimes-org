@@ -1,10 +1,12 @@
-{% macro location_fields(placeholder="Choose a city", map_link=true, allow_blank=true) %}
-  <label>City
-    <select data-city>
-      {% if allow_blank %}<option value="">{{ placeholder }}</option>{% endif %}
-      <option value="custom">Coordinates</option>
-    </select>
-  </label>
+{% macro location_fields(map_link=true) %}
+  <div class="city-search">
+    <label>City
+      <input data-city type="search" placeholder="Search cities" autocomplete="off" spellcheck="false"
+        role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="city-results">
+    </label>
+    <ul class="city-results" data-city-results id="city-results" role="listbox" aria-label="Matching cities" hidden></ul>
+    <p class="small muted status" data-city-status role="status"></p>
+  </div>
   <details class="coordinate-fields" data-coordinate-details>
     <summary>Coordinates</summary>
     <div class="fields two-fields">
@@ -17,6 +19,7 @@
     <a class="quiet-link small" href="https://www.openstreetmap.org/" target="_blank" rel="noopener noreferrer">Find coordinates on OpenStreetMap</a>
     {% endif %}
   </details>
+  <a class="quiet-link small city-credit" href="https://www.geonames.org/" target="_blank" rel="noopener noreferrer">City data · GeoNames</a>
 {% endmacro %}
 
 {% macro method_options(custom=false) %}

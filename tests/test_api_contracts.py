@@ -15,6 +15,21 @@ class ApiContractTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.get_json(), {"status": "ok"})
 
+    def test_hijri_month_grid_matches_the_leap_day_timetable(self):
+        month = self.client.get("/hijri_month/2028/2")
+        daily = self.client.post(
+            "/prayer_times", json={"lat": 43.65, "lon": -79.38, "date": "2028-02-29"},
+        )
+        self.assertEqual(month.status_code, 200)
+        self.assertEqual(daily.status_code, 200)
+        self.assertEqual(len(month.get_json()), 29)
+        self.assertEqual(month.get_json()[-1], daily.get_json()["hijri"])
+
+    def test_hijri_month_grid_validates_bounds(self):
+        for route in ("/hijri_month/1899/12", "/hijri_month/2101/1", "/hijri_month/2026/13"):
+            with self.subTest(route=route):
+                self.assertEqual(self.client.get(route).status_code, 400)
+
     def test_prayer_times_missing_fields_returns_400(self):
         response = self.client.post("/prayer_times", json={})
         self.assertEqual(response.status_code, 400)

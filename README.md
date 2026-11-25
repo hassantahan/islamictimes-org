@@ -22,10 +22,10 @@ Until v3.2.0 is published, install the v3.2.0 wheel for your platform or the sou
 - Choose a city, coordinates, or device location. Device location requires a browser permission prompt and a secure context.
 - Jaʿfarī (Leva Institute) is the default prayer calculation method. Choose Custom angles to override the Fajr, Maghrib, or Isha angles. Blank fields use the Jaʿfarī angle. A mosque profile holds its name, calculation method, optional custom angles, Asr convention, and signed minute offsets for the five daily prayers. A timetable can cover up to 366 days.
 - iCalendar includes the five daily prayer events. CSV also includes solar markers, a calculated Hijri date, local offsets, and estimated-time indicators.
-- The daily timetable updates when its date, location, or calculation settings change. The Jaʿfarī and Tehran presets show available Ẓuhr and ʿAṣr faḍīlah estimates beside the prayer times. Use the asterisks to see sources and earlier recommended limits.
-- **Remember settings** is off by default. When enabled, browser storage holds appearance, clock format, the selected city, prayer settings, and profiles. Exact coordinates are used only for the current visit. Users can turn saving off or clear saved data from Settings.
+- The daily timetable updates when its date, location, or calculation settings change. Its date picker shows Gregorian and calculated Hijri days. The Jaʿfarī and Tehran presets show Ẓuhr and ʿAṣr faḍīlah ranges. Open a range for its ruling or use **About Faḍīlah** for an overview.
+- **Remember settings** is off by default. When enabled, browser storage holds appearance, clock format, the selected city, prayer settings, and profiles. Custom and device coordinates are used only for the current visit. Users can turn saving off or clear saved data from Settings.
 - The daily schedule defaults to Toronto. Its map loads OpenStreetMap with coordinates rounded to two decimal places and omits the referring page. The location picker offers a city, coordinates, or device location.
-- City selection uses a local list. Other locations can be entered as coordinates or set with device location.
+- City search runs in the browser using a bundled [GeoNames index](static/data/CITIES-LICENSE.md).
 
 ## Application structure
 

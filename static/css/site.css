@@ -21,6 +21,8 @@
   --action: light-dark(#35383a, #e2e4e6);
   --on-action: light-dark(#fff, #202122);
   --band: light-dark(#e9eaeb, #26282a);
+  --clock-ink: var(--ink);
+  --clock-muted: var(--muted);
   --fadilah-band: light-dark(#e6edf4, #232f3c);
   --fadilah-ink: light-dark(#36526c, #b0c9e1);
   --accent: light-dark(#676d70, #b0b4b7);
@@ -31,10 +33,30 @@
 
 :root[data-theme="system"] { color-scheme: light dark; }
 :root[data-theme="light"] { color-scheme: light; }
+:root:not([data-theme]), :root[data-theme="traditional"] {
+  color-scheme: light;
+  --paper: #f2ecdc;
+  --surface: #fbf7eb;
+  --ink: #24362d;
+  --muted: #545b4b;
+  --line: #d9cdb2;
+  --control: #9b8b69;
+  --current: #efe4c7;
+  --field-fill: #f4eddb;
+  --link: #395c49;
+  --action: #294e3d;
+  --on-action: #fffbef;
+  --band: #233f34;
+  --clock-ink: #fff7e2;
+  --clock-muted: #ead6a8;
+  --fadilah-band: #e4ebda;
+  --fadilah-ink: #3e664a;
+  --accent: #927139;
+}
 
 *, *::before, *::after { box-sizing: border-box; }
 [hidden] { display: none !important; }
-body, h1, h2, p, dl, dd, figure { margin: 0; }
+body, h1, h2, h3, p, dl, dd, figure { margin: 0; }
 body { min-height: 100vh; display: flex; flex-direction: column; background: var(--paper); color: var(--ink); }
 a { color: inherit; }
 button, input, select { font: inherit; }
@@ -93,6 +115,12 @@ h2 { font-size: clamp(1.22rem, 2.25vw, 1.45rem); line-height: 1.24; letter-spaci
 .three-fields { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .full-width { grid-column: 1 / -1; }
 .location-fields { display: grid; gap: .55rem; min-width: 0; }
+.city-search { position: relative; }
+.city-results { max-height: 13rem; overflow: auto; list-style: none; margin: .25rem 0 0; padding: .2rem; border: 1px solid var(--control); border-radius: .35rem; background: var(--surface); }
+.city-results li { padding: .42rem .55rem; border-radius: .2rem; cursor: pointer; }
+.city-results li:hover, .city-results li[aria-selected="true"] { background: var(--current); }
+.city-credit { justify-self: start; color: var(--muted); font-size: .8rem; }
+.city-search .status:not(:empty) { margin-top: .25rem; }
 label { display: grid; gap: .25rem; min-width: 0; color: var(--muted); font-size: .9rem; font-weight: 650; }
 input:not([type="checkbox"]), select { display: block; width: 100%; min-width: 0; min-height: 2.7rem; padding: .46rem .7rem; border: 1px solid var(--line); border-radius: .5rem; color: var(--ink); background-color: var(--surface); font-weight: 400; font-size: 1rem; }
 select {
@@ -107,22 +135,32 @@ select {
 .daily-date-group { display: flex; align-items: center; gap: .58rem; }
 .day-dates { display: grid; gap: .15rem; font-size: 1rem; font-weight: 550; }
 #daily-hijri:empty { display: none; }
-.date-control { position: relative; flex: none; }
-.date-control .date-picker-anchor { position: absolute; inset: auto 0 0 auto; width: 1px; height: 1px; min-height: 0; padding: 0; border: none; opacity: 0; pointer-events: none; }
+.date-control { flex: none; }
+.date-dialog { max-width: 29rem; }
+.date-month { display: flex; justify-content: space-between; align-items: center; gap: .25rem; }
+.date-month > button { font-size: 1.45rem; }
+.date-month > button:disabled { opacity: .36; }
+.date-month-title { display: flex; align-items: center; justify-content: center; gap: .35rem; font-size: 1.15rem; font-weight: 600; }
+.date-month-title #date-year { width: 4.7rem; min-height: 2rem; padding: .2rem .35rem; font-size: .95rem; }
+#date-hijri-months { min-height: 1.5em; margin: .3rem 0 .8rem; text-align: center; }
+.date-grid { table-layout: fixed; width: 100%; border-collapse: collapse; text-align: center; }
+.date-grid th { color: var(--muted); font-weight: 550; }
+.date-grid td { padding: .12rem; }
+.date-grid td button { display: grid; place-items: center; width: 100%; min-height: 2.8rem; gap: .08rem; padding: .2rem; border: 1px solid transparent; border-radius: .3rem; background: transparent; color: var(--ink); font-weight: 575; line-height: 1; }
+.date-grid td button:hover, .date-grid td button[aria-pressed="true"] { background: var(--current); }
+.date-grid td button[aria-current="date"] { border-color: var(--control); }
+.date-hijri { color: var(--link); }
+.date-grid .date-hijri { font-size: .74rem; font-weight: 450; }
+.date-picker-footer { display: flex; justify-content: space-between; align-items: baseline; gap: .5rem; margin-top: .65rem; }
 .prayer-sheet { background: var(--surface); border: 1px solid var(--line); border-top: 0; }
-.prayer-clock { display: flex; align-items: center; gap: clamp(1rem, 5vw, 3.4rem); min-height: 8rem; padding: clamp(.9rem, 2.2vw, 1.4rem) clamp(1rem, 3vw, 2rem); background: var(--band); }
-.prayer-clock.in-fadilah { background: var(--fadilah-band); }
-.prayer-clock.in-fadilah .clock-label { color: var(--fadilah-ink); }
-.clock-label { color: var(--link); font-size: .92rem; font-weight: 565; }
+.prayer-clock { display: flex; align-items: center; gap: clamp(1rem, 5vw, 3.4rem); min-height: 8rem; padding: clamp(.9rem, 2.2vw, 1.4rem) clamp(1rem, 3vw, 2rem); background: var(--band); color: var(--clock-ink); }
+.clock-label { color: var(--clock-muted); font-size: .92rem; font-weight: 565; }
 .clock-copy h2 { font-size: clamp(1.55rem, 3.7vw, 2.55rem); font-weight: 570; }
 .clock-reading { position: relative; }
 .clock-time { font-size: clamp(2.9rem, 6.1vw, 5rem); font-weight: 475; line-height: .97; letter-spacing: -.05em; font-variant-numeric: lining-nums tabular-nums; }
-.clock-day { color: var(--link); }
-.hero-fadilah { margin-inline-start: auto; padding-inline-start: clamp(.8rem, 3vw, 1.7rem); border-inline-start: 1px solid var(--control); }
-.hero-fadilah dl { display: grid; gap: .15rem; margin-top: .23rem; font-size: 1rem; }
-.hero-fadilah dl div { display: grid; grid-template-columns: 2.5rem 1fr; gap: .55rem; }
-.hero-fadilah dd { display: flex; flex-wrap: wrap; gap: 0 .55rem; font-variant-numeric: lining-nums tabular-nums; }
-.hero-fadilah-now { color: var(--fadilah-ink); font-weight: 660; }
+.clock-day { color: var(--clock-muted); }
+.current-prayer { min-width: 9rem; margin-inline-start: auto; padding-inline-start: clamp(.8rem, 3vw, 1.7rem); border-inline-start: 1px solid var(--control); }
+#current-prayer-name { font-size: 1.3rem; font-weight: 575; }
 .notice { padding: .55rem .8rem; background: var(--current); color: var(--ink); font-size: .9rem; }
 .prayer-timeline { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); padding: 0; margin: 0; list-style: none; font-variant-numeric: tabular-nums; }
 .prayer-timeline li { min-width: 0; display: grid; align-content: center; gap: .1rem; padding: .75rem clamp(.65rem, 2vw, 1.5rem); border-top: 3px solid transparent; }
@@ -131,31 +169,35 @@ select {
 .prayer-reading { display: flex; align-items: end; justify-content: space-between; flex-wrap: wrap; gap: .35rem .5rem; }
 .prayer-timeline li strong { font-size: clamp(1.05rem, 3.2vw, 1.95rem); font-weight: 550; line-height: 1.15; white-space: nowrap; }
 .fadilah-window { display: grid; margin-inline-start: auto; color: var(--muted); text-align: end; font-size: .76rem; }
-.fadilah-label { display: flex; justify-content: end; align-items: baseline; gap: .12rem; }
-.fadilah-info { min-width: 1.5rem; min-height: 1.5rem; margin-inline-end: -.25rem; padding: 0 .15rem; border: 0; border-radius: .2rem; background: transparent; color: var(--link); font-weight: 650; line-height: 1; }
-.fadilah-info:hover { background: var(--field-fill); }
-.fadilah-window [data-fadilah-range] { color: var(--ink); font-size: .82rem; font-weight: 580; line-height: 1.12; white-space: nowrap; }
+.fadilah-range { min-height: 1.5rem; padding: .1rem 0; border: 0; color: inherit; background: transparent; font-size: .86rem; font-weight: 570; white-space: nowrap; text-decoration: underline dotted; text-underline-offset: .22em; }
+.fadilah-range:hover, .fadilah-range[aria-expanded="true"] { color: var(--ink); text-decoration-style: solid; }
 .fadilah-tile { position: fixed; inset: auto; overflow: auto; width: min(17.5rem, calc(100% - 1.5rem)); margin: 0; padding: .75rem .9rem; border: 1px solid var(--line); border-radius: .45rem; background: var(--surface); box-shadow: 0 5px 22px #0002; color: var(--ink); text-align: start; font-size: .91rem; }
-.fadilah-tile p + p { margin-top: .4rem; }
+.fadilah-tile h3 { font-size: 1.15rem; }
+.fadilah-tile p, .guide-copy p + p { margin-top: .55rem; }
+.fadilah-conditions { margin-top: .55rem; padding-block: .3rem; border-block: 1px solid var(--line); }
+.fadilah-conditions > div { display: flex; justify-content: space-between; gap: .4rem; }
+.fadilah-conditions dt { color: var(--muted); }
+.fadilah-tile a, .guide-copy a { color: var(--link); text-underline-offset: .2em; }
 .prayer-timeline .next-row { background: var(--current); border-top-color: var(--accent); }
 .prayer-timeline .next-row .prayer-name { color: var(--ink); }
 .prayer-timeline .in-fadilah { background: var(--fadilah-band); border-top-color: var(--fadilah-ink); }
 .prayer-timeline .in-fadilah .fadilah-window { color: var(--fadilah-ink); }
-.prayer-sheet-footer { border-top: 1px solid var(--line); padding: .6rem clamp(.65rem, 2vw, 1.5rem); }
+.prayer-sheet-footer { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: .25rem 1rem; border-top: 1px solid var(--line); padding: .6rem clamp(.65rem, 2vw, 1.5rem); }
+#open-fadilah-guide { padding: 0; }
 .solar-strip { display: flex; flex-wrap: wrap; gap: .15rem 1.6rem; color: var(--muted); font-size: .875rem; }
 .solar-strip div { display: flex; align-items: baseline; gap: .38rem; }
 .solar-strip dd { color: var(--ink); font-variant-numeric: tabular-nums; font-weight: 600; }
-#daily-status:not(:empty) { margin-top: .4rem; }
+#daily-status:not(:empty) { flex-basis: 100%; margin-top: .4rem; }
 .daily-tools, .forecast-grid { display: grid; gap: var(--section-space); align-items: start; margin-top: var(--section-space); }
-.daily-tools { grid-template-columns: minmax(0, 25rem) minmax(0, 1fr); }
+.daily-tools { grid-template-columns: minmax(0, 1fr) minmax(0, 25rem) minmax(0, 1fr); align-items: center; gap: 1.25rem; border-top: 1px solid var(--line); padding-top: 1.25rem; }
 .forecast-grid { grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); }
 .local-visibility { display: grid; align-content: start; gap: .65rem; }
-.daily-location-panel { min-width: 0; }
+.daily-location-panel { min-width: 0; justify-self: center; }
 .location-button { display: flex; align-items: center; gap: .52rem; min-height: 2.3rem; padding: 0; color: var(--ink); background: transparent; border: 0; font-weight: 575; text-align: left; }
 .location-button svg { color: var(--link); }
 .location-button:hover { color: var(--link); }
-.location-map { max-width: 25rem; margin-top: .55rem; }
-.qibla-section { display: flex; align-items: center; gap: clamp(1rem, 3.5vw, 3rem); border-inline-start: 1px solid var(--line); padding-inline-start: var(--section-space); }
+.location-map { width: min(100%, 25rem); justify-self: center; text-align: center; }
+.qibla-section { display: flex; align-items: center; justify-self: center; gap: clamp(.6rem, 2vw, 1.5rem); }
 .qibla-angle { margin: .26rem 0 .18rem; font-size: clamp(1.3rem, 2.5vw, 1.6rem); font-weight: 580; line-height: 1.15; font-variant-numeric: tabular-nums; }
 .qibla-dial { position: relative; overflow: hidden; flex: none; width: 4.7rem; aspect-ratio: 1; border: 1px solid var(--control); border-radius: 50%; background: var(--surface); color: var(--muted); font-size: .64rem; font-weight: 650; }
 .qibla-dial > span:not(.qibla-needle) { position: absolute; }
@@ -168,7 +210,7 @@ select {
 .qibla-needle::before { top: 22%; background: var(--accent); clip-path: polygon(50% 0, 100% 100%, 0 100%); }
 .qibla-needle::after { top: 50%; background: var(--control); clip-path: polygon(0 0, 100% 0, 50% 100%); }
 .location-map a { display: inline-block; margin-top: .4rem; }
-.location-map iframe { display: block; width: 100%; height: 13.5rem; border: 1px solid var(--line); border-radius: .4rem; background: var(--field-fill); }
+.location-map iframe { display: block; width: 100%; height: 13.5rem; border: 1px solid var(--line); border-radius: .4rem; background: var(--field-fill); filter: saturate(.65); }
 
 .calendar-controls { padding: clamp(.8rem, 2vw, 1.4rem); background: var(--surface); border-block: 1px solid var(--line); }
 .calendar-inputs { display: grid; grid-template-columns: minmax(0, 1.3fr) repeat(2, minmax(0, .8fr)) auto; align-items: start; gap: .65rem 1rem; }
@@ -216,8 +258,8 @@ select {
   .calendar-inputs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .calendar-inputs > .location-fields { grid-column: 1 / -1; }
   .calendar-inputs > button { margin-top: 0; width: fit-content; grid-column: 1 / -1; }
-  .daily-tools { grid-template-columns: minmax(0, 1fr); }
-  .qibla-section { justify-content: space-between; border-inline-start: 0; border-top: 1px solid var(--line); padding: 1rem 0 0; }
+  .daily-tools { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem .55rem; }
+  .location-map { grid-column: 1 / -1; grid-row: 2; }
 }
 @media (max-width: 42rem) {
   .scroll-hint { display: block; }
@@ -235,7 +277,10 @@ select {
   .daily-date-group { justify-content: space-between; width: 100%; }
   .prayer-clock { min-height: 8rem; flex-wrap: wrap; padding-block: .85rem; gap: .65rem 1.25rem; }
   .clock-time { font-size: clamp(2.65rem, 10.9vw, 4.2rem); }
-  .hero-fadilah { flex-basis: 100%; margin-inline-start: 0; padding: .55rem 0 0; border-inline-start: 0; border-top: 1px solid var(--line); }
+  .current-prayer { display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; flex-basis: 100%; margin-inline-start: 0; padding: .45rem 0 0; border-inline-start: 0; border-top: 1px solid var(--control); }
+  #current-prayer-name { font-size: 1.08rem; }
+  .qibla-dial { width: 3.45rem; }
+  .qibla-angle { font-size: 1.08rem; }
   .solar-strip { column-gap: .7rem; }
   .map-fields { width: 100%; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
 }

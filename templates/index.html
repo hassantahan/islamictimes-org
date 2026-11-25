@@ -11,8 +11,7 @@
       <p id="daily-hijri"></p>
     </div>
     <div class="date-control">
-      <input type="date" id="daily-date" aria-label="Date" required min="1900-01-01" max="2100-12-31">
-      <button class="icon-button" id="open-date-picker" type="button" aria-label="Choose date" title="Choose date" hidden>
+      <button class="icon-button" id="open-date-picker" type="button" aria-label="Choose date" title="Choose date" aria-haspopup="dialog" disabled>
         <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" aria-hidden="true">
           <rect x="3.5" y="5.5" width="17" height="15" rx="2"></rect>
           <path d="M7.5 3.5v4m9-4v4M3.5 10h17"></path>
@@ -33,16 +32,9 @@
       <p class="clock-time" id="hero-time">—</p>
       <p class="clock-day small" id="hero-day" hidden>Tomorrow</p>
     </div>
-    <div class="hero-fadilah" id="hero-fadilah" hidden>
-      <p class="clock-label">Faḍīlah</p>
-      <dl>
-        {% for key, label in [('zuhr', 'Ẓuhr'), ('asr', 'ʿAṣr')] %}
-        <div data-hero-fadilah="{{ key }}" hidden>
-          <dt>{{ label }}</dt>
-          <dd><span data-fadilah-range></span><span class="hero-fadilah-now" data-fadilah-now hidden>Now</span></dd>
-        </div>
-        {% endfor %}
-      </dl>
+    <div class="current-prayer" id="current-prayer" hidden>
+      <p class="clock-label">Current prayer</p>
+      <p id="current-prayer-name">—</p>
     </div>
   </div>
 
@@ -55,18 +47,18 @@
         <strong id="time-{{ key }}">—</strong>
         {% if key in ("zuhr", "asr") %}
         <div class="fadilah-window" id="fadilah-{{ key }}" hidden>
-          <div class="fadilah-label">
-            <span>Faḍīlah</span>
-            <button class="fadilah-info" type="button" popovertarget="fadilah-note-{{ key }}" aria-label="{{ label }} faḍīlah details">*</button>
-          </div>
-          <span data-fadilah-range></span>
+          <button class="fadilah-range" type="button" popovertarget="fadilah-note-{{ key }}" aria-expanded="false"></button>
           <div class="fadilah-tile" id="fadilah-note-{{ key }}" popover aria-label="{{ label }} faḍīlah">
-            <p>Faḍīlah is the part of {{ label }}’s prayer time when offering it is especially recommended.</p>
-            <p>For {{ label }}, it is better to pray by <b data-fadilah-preferred></b>.</p>
+            <h3>{{ label }}</h3>
+            <p>Shadow growth after noon, measured in fractions of the object’s height.</p>
+            <dl class="fadilah-conditions">
+              <div><dt>Window</dt><dd>{{ "2/7 to 6/7" if key == "asr" else "Noon to 4/7" }}</dd></div>
+              <div><dt>Better by</dt><dd><strong data-fadilah-preferred></strong> · {{ "4/7" if key == "asr" else "2/7" }}</dd></div>
+            </dl>
             {% if key == "asr" %}
-            <p>You may offer ʿAṣr after praying Ẓuhr, even before the timetable’s ʿAṣr time.</p>
+            <p>ʿAṣr may be prayed after Ẓuhr. The main entry uses a shadow increase of <span id="asr-shadow-factor"></span>.</p>
             {% endif %}
-            <p><a href="https://www.sistani.org/persian/book/26575/6324/">Sayyid Sistani · {{ label }} (ruling 966)</a></p>
+            <p><a href="https://www.sistani.org/persian/book/26575/6324/">Sayyid Sistani · ruling 966</a></p>
           </div>
         </div>
         {% endif %}
@@ -81,6 +73,7 @@
       <div><dt>{{ label }}</dt><dd id="time-{{ key }}">—</dd></div>
       {% endfor %}
     </dl>
+    <button type="button" class="text-button small" id="open-fadilah-guide" aria-haspopup="dialog" hidden>About Faḍīlah</button>
     <p id="daily-status" class="small status" role="status"></p>
   </div>
 </section>
@@ -94,12 +87,13 @@
         <path d="m6 3.5 4.5 4.5L6 12.5"></path>
       </svg>
     </button>
-    <div class="location-map">
-      <iframe id="daily-map-frame" title="Approximate location on OpenStreetMap" referrerpolicy="no-referrer" credentialless hidden></iframe>
-      <p class="muted small" id="map-notice" hidden>Map unavailable at this latitude.</p>
-      <a id="daily-map-link" class="quiet-link small" target="_blank" rel="noopener noreferrer" aria-label="Open in OpenStreetMap" hidden>Open map</a>
-    </div>
   </section>
+
+  <div class="location-map">
+    <iframe id="daily-map-frame" title="Approximate location on OpenStreetMap" referrerpolicy="no-referrer" credentialless hidden></iframe>
+    <p class="muted small" id="map-notice" hidden>Map unavailable at this latitude.</p>
+    <a id="daily-map-link" class="quiet-link small" target="_blank" rel="noopener noreferrer" aria-label="Open in OpenStreetMap" hidden>Open map</a>
+  </div>
 
   <section class="qibla-section" aria-labelledby="qibla-title">
     <div>
@@ -121,9 +115,47 @@
     <button class="icon-button dialog-close" type="submit" aria-label="Close location">×</button>
   </form>
   <div class="location-fields" id="daily-location">
-    {{ location_fields(map_link=false, allow_blank=false) }}
+    {{ location_fields(map_link=false) }}
   </div>
   <p class="small status" id="location-error" role="status"></p>
+</dialog>
+
+<dialog class="dialog date-dialog" id="date-dialog" aria-labelledby="date-picker-title">
+  <form method="dialog" class="dialog-heading">
+    <h2 id="date-picker-title">Choose date</h2>
+    <button class="icon-button dialog-close" type="submit" aria-label="Close date picker">×</button>
+  </form>
+  <div class="date-month">
+    <button class="icon-button" id="date-previous" type="button" aria-label="Previous month">‹</button>
+    <div class="date-month-title">
+      <span id="date-month-name"></span>
+      <input id="date-year" aria-label="Year" type="number" min="1900" max="2100" step="1">
+    </div>
+    <button class="icon-button" id="date-next" type="button" aria-label="Next month">›</button>
+  </div>
+  <p class="muted small" id="date-hijri-months"></p>
+  <table class="date-grid" aria-label="Gregorian and calculated Hijri days">
+    <thead><tr id="date-weekdays"></tr></thead>
+    <tbody id="date-days"></tbody>
+  </table>
+  <div class="date-picker-footer">
+    <button class="text-button small" id="date-today" type="button">Today</button>
+    <span class="muted small">Gregorian <span class="date-hijri">/ Hijri</span></span>
+  </div>
+  <p class="small status" id="date-picker-status" role="status"></p>
+</dialog>
+
+<dialog class="dialog" id="fadilah-guide" aria-labelledby="fadilah-guide-title">
+  <form method="dialog" class="dialog-heading">
+    <h2 id="fadilah-guide-title">Faḍīlah</h2>
+    <button class="icon-button dialog-close" type="submit" aria-label="Close Faḍīlah guide">×</button>
+  </form>
+  <div class="guide-copy">
+    <p>Faḍīlah is the preferred window within the time a prayer may be offered.</p>
+    <p>The smaller ranges show the calculated windows for Ẓuhr and ʿAṣr. Open a range to see the shadow rules and the earlier recommended time.</p>
+    <p>Sayyid Sistani gives separate guidance for intense heat.</p>
+    <p><a href="https://www.sistani.org/persian/book/26575/6324/">Sayyid Sistani · rulings 966–967</a></p>
+  </div>
 </dialog>
 {% endblock %}
 

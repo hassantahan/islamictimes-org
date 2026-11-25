@@ -1,5 +1,5 @@
 const STORAGE_KEY = "islamic-times.preferences.v1";
-const DEFAULTS = { theme: "dark", clock: "24", city: "", daily: null, calendar: null, profiles: [] };
+const DEFAULTS = { theme: "traditional", clock: "24", city: "", daily: null, calendar: null, profiles: [] };
 
 function readSaved() {
   try {
@@ -12,9 +12,9 @@ function readSaved() {
 
 function normalize(values) {
   return {
-    theme: ["system", "light", "dark"].includes(values.theme) ? values.theme : DEFAULTS.theme,
+    theme: ["traditional", "system", "light", "dark"].includes(values.theme) ? values.theme : DEFAULTS.theme,
     clock: values.clock === "12" ? "12" : "24",
-    city: typeof values.city === "string" ? values.city : "",
+    city: typeof values.city === "string" || (values.city && typeof values.city === "object") ? values.city : "",
     daily: values.daily ?? null,
     calendar: values.calendar ?? null,
     profiles: Array.isArray(values.profiles) ? values.profiles : [],

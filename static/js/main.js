@@ -1,4 +1,5 @@
 import { rememberCity, setMapLink, setupLocation } from "./shared/location.js";
+import { setupDatePicker } from "./shared/date-picker.js";
 import { getPreferences, updatePreferences } from "./shared/preferences.js";
 import { apiResponse, applySelect, civilDate, formatTime, localISO, PRAYERS, setupCustomAngles, shiftDate } from "./shared/timetable.js";
 
@@ -6,9 +7,7 @@ const byId = (id) => document.getElementById(id);
 const locationControls = byId("daily-location");
 const locationDialog = byId("location-dialog");
 const locationFields = setupLocation(locationControls, "toronto");
-const city = locationControls.querySelector("[data-city]");
 const calculation = byId("daily-calculation");
-const date = byId("daily-date");
 const dateButton = byId("open-date-picker");
 const method = byId("daily-method");
 const asr = byId("daily-asr");
@@ -20,8 +19,8 @@ const prayerRows = [...timeline.querySelectorAll("[data-prayer-row]")];
 const solarLabels = { sunrise: "Sunrise", sunset: "Sunset", midnight: "Midnight" };
 const mapFrame = byId("daily-map-frame");
 const mapLink = byId("daily-map-link");
-const heroFadilah = byId("hero-fadilah");
-const heroWindows = [...heroFadilah.querySelectorAll("[data-hero-fadilah]")];
+const fadilahGuide = byId("open-fadilah-guide");
+const prayerCutoffs = { fajr: "sunrise", zuhr: "sunset", asr: "sunset", maghrib: "midnight", isha: "midnight" };
 
 let location = locationFields.read();
 let result;
@@ -30,8 +29,7 @@ let selectedDate;
 let saveSelections = false;
 let locationTimer;
 let calculationTimer;
-let tomorrow;
-let tomorrowPending = false;
+const adjacentDays = new Map();
 let activeRequest;
 
 function applySettings(settings) {
@@ -61,11 +59,27 @@ function getDaily(forDate, signal) {
   }, signal).then((response) => response.json());
 }
 
+function loadAdjacentDay(date) {
+  if (adjacentDays.has(date) || displayedLocation !== location || displayedSettings !== appliedSettings) return;
+  const shown = result;
+  const signal = activeRequest.signal;
+  adjacentDays.set(date, null);
+  getDaily(date, signal).then((day) => {
+    if (signal.aborted || shown !== result) return;
+    adjacentDays.set(date, day);
+    renderHero();
+  }).catch(() => {
+    if (shown === result) adjacentDays.delete(date);
+  });
+}
+
 function candidates(day) {
   return Object.entries(PRAYERS)
-    .map(([key, label]) => ({ key, label, time: day?.[key]?.time, when: Date.parse(day?.[key]?.time) }))
-    .filter(({ when }) => Number.isFinite(when))
-    .sort((left, right) => left.when - right.when);
+    .map(([key, label]) => ({
+      key, label, time: day?.[key]?.time, when: Date.parse(day?.[key]?.time),
+      ends: Date.parse(day?.[prayerCutoffs[key]]?.time),
+    }))
+    .filter(({ when }) => Number.isFinite(when));
 }
 
 function formatRange({ start, end }) {
@@ -75,62 +89,43 @@ function formatRange({ start, end }) {
   return (suffix && first.endsWith(suffix) ? first.slice(0, -suffix.length) : first) + "–" + last;
 }
 
-function renderHeroFadilah(featured, isToday, now) {
-  const activeWindows = new Set();
-  let hasVisibleWindow = false;
-  for (const row of heroWindows) {
-    const key = row.dataset.heroFadilah;
-    const range = result.fadilah?.[key];
-    const isActive = isToday && range && Date.parse(range.start) <= now && now < Date.parse(range.end);
-    const isVisible = range && (key === featured?.key || isActive);
-    row.hidden = !isVisible;
-    if (!isVisible) continue;
-
-    hasVisibleWindow = true;
-    if (isActive) activeWindows.add(key);
-    row.querySelector("[data-fadilah-range]").textContent = formatRange(range);
-    row.querySelector("[data-fadilah-now]").hidden = !isActive;
-  }
-  heroFadilah.hidden = !hasVisibleWindow;
-  byId("prayer-clock").classList.toggle("in-fadilah", activeWindows.size > 0);
-  return activeWindows;
-}
-
 function renderHero() {
   if (!result) return;
   const today = localISO(new Date(), result.timezone);
   const isToday = result.date === today;
   const now = Date.now();
-  const prayers = candidates(result);
-  const next = isToday ? prayers.find(({ when }) => when >= now) : prayers[0];
-  const following = isToday && !next ? candidates(tomorrow).find(({ when }) => when >= now) : null;
-  const featured = next || following;
+  const prayers = candidates(result).sort((left, right) => left.when - right.when);
+  const yesterday = isToday ? shiftDate(today, -1) : null;
+  const tomorrow = isToday ? shiftDate(today, 1) : null;
+  const schedule = isToday
+    ? [...candidates(adjacentDays.get(yesterday)), ...prayers, ...candidates(adjacentDays.get(tomorrow))]
+      .sort((left, right) => left.when - right.when)
+    : prayers;
+  const upcoming = isToday ? schedule.find(({ when }) => when > now) : prayers[0];
+  const started = isToday ? schedule.findLast(({ when }) => when <= now) : null;
+  const current = started && !(started.ends <= now) ? started : null;
 
   byId("hero-label").textContent = isToday ? "Next prayer" : "First prayer";
-  byId("hero-prayer").textContent = featured?.label ?? "—";
-  byId("hero-time").textContent = formatTime(featured?.time);
-  byId("hero-day").hidden = !following;
-  const activeWindows = renderHeroFadilah(featured, isToday, now);
+  byId("hero-prayer").textContent = upcoming?.label ?? "—";
+  byId("hero-time").textContent = formatTime(upcoming?.time);
+  byId("hero-day").hidden = !isToday || !upcoming || upcoming.time.slice(0, 10) <= today;
+  byId("current-prayer").hidden = !isToday;
+  byId("current-prayer-name").textContent = current?.label ?? "Between prayers";
   for (const row of prayerRows) {
-    row.classList.toggle("next-row", isToday && row.dataset.prayerRow === next?.key);
-    row.classList.toggle("in-fadilah", activeWindows.has(row.dataset.prayerRow));
+    const key = row.dataset.prayerRow;
+    const range = result.fadilah?.[key];
+    row.classList.toggle("next-row", isToday && key === upcoming?.key && result[key]?.time === upcoming.time);
+    row.classList.toggle("in-fadilah", !!(isToday && range && Date.parse(range.start) <= now && now < Date.parse(range.end)));
   }
 
-  if (isToday && !next && !tomorrow && !tomorrowPending &&
-      displayedLocation === location && displayedSettings === appliedSettings) {
-    const shown = result;
-    tomorrowPending = true;
-    getDaily(shiftDate(today, 1), activeRequest.signal).then((data) => {
-      if (shown !== result) return;
-      tomorrow = data;
-      renderHero();
-    }).catch(() => {}).finally(() => {
-      if (shown === result) tomorrowPending = false;
-    });
+  if (isToday) {
+    if (!prayers.some(({ when }) => when <= now)) loadAdjacentDay(yesterday);
+    if (!upcoming) loadAdjacentDay(tomorrow);
   }
 }
 
 function renderFadilah(windows) {
+  fadilahGuide.hidden = !Object.keys(windows ?? {}).length;
   for (const key of ["zuhr", "asr"]) {
     const time = windows?.[key];
     const windowLabel = byId("fadilah-" + key);
@@ -140,7 +135,9 @@ function renderFadilah(windows) {
       continue;
     }
 
-    windowLabel.querySelector("[data-fadilah-range]").textContent = formatRange(time);
+    const button = windowLabel.querySelector(".fadilah-range");
+    button.textContent = formatRange(time);
+    button.setAttribute("aria-label", PRAYERS[key] + " preferred window, " + button.textContent);
     windowLabel.querySelector("[data-fadilah-preferred]").textContent = formatTime(time.preferred_by);
   }
 }
@@ -178,7 +175,7 @@ function renderMap() {
 
 function renderDaily() {
   if (!result) return;
-  date.value = selectedDate ?? result.date;
+  dateButton.disabled = false;
   const gregorian = byId("hero-date");
   gregorian.dateTime = result.date;
   gregorian.textContent = civilDate(result.date, { weekday: "long" }) + ", " +
@@ -186,6 +183,7 @@ function renderDaily() {
   byId("daily-heading-location").textContent = displayedLocation.label;
   const hijri = result.hijri;
   byId("daily-hijri").textContent = hijri.day + " " + hijri.month_name + " " + hijri.year + " AH";
+  byId("asr-shadow-factor").textContent = result.method.asr_type === 1 ? "twice the object’s height" : "the object’s full height";
   for (const key of Object.keys({ ...PRAYERS, ...solarLabels })) {
     const time = result[key]?.time;
     const nextDay = formatTime(time) !== "—" && time.slice(0, 10) > result.date;
@@ -209,8 +207,7 @@ async function refresh() {
   try {
     const data = await getDaily(selectedDate, request.signal);
     if (request.signal.aborted) return;
-    tomorrow = null;
-    tomorrowPending = false;
+    adjacentDays.clear();
     result = data;
     displayedLocation = location;
     displayedSettings = appliedSettings;
@@ -240,8 +237,8 @@ function updateLocation() {
     location = newLocation;
     saveSelections = true;
     refresh();
-  } catch {
-    errorStatus.textContent = "Enter valid coordinates.";
+  } catch (error) {
+    errorStatus.textContent = error.message;
   }
 }
 
@@ -260,30 +257,43 @@ function updateCalculation() {
   }
 }
 
-if (typeof date.showPicker === "function") {
-  date.classList.add("date-picker-anchor");
-  date.tabIndex = -1;
-  dateButton.hidden = false;
-  dateButton.addEventListener("click", () => {
-    try {
-      date.showPicker();
-    } catch {
-      date.classList.remove("date-picker-anchor");
-      date.removeAttribute("tabindex");
-      dateButton.hidden = true;
-      date.focus();
-    }
-  });
-}
-date.addEventListener("change", () => {
-  if (!date.reportValidity()) return;
-  const today = result && localISO(new Date(), result.timezone);
-  selectedDate = date.value === today ? undefined : date.value;
+const datePicker = setupDatePicker((date) => {
+  const today = localISO(new Date(), result.timezone);
+  selectedDate = date === today ? undefined : date;
   refresh();
 });
+dateButton.addEventListener("click", () => datePicker.open(result.date, localISO(new Date(), result.timezone)));
+fadilahGuide.addEventListener("click", () => byId("fadilah-guide").showModal());
 
 for (const button of timeline.querySelectorAll("[popovertarget]")) {
   const tile = byId(button.getAttribute("popovertarget"));
+  let hideTimer;
+  let pinned = false;
+  const isOpen = () => tile.matches(":popover-open");
+  const keepOpen = () => clearTimeout(hideTimer);
+  const hideOnLeave = () => {
+    keepOpen();
+    if (!pinned) hideTimer = setTimeout(() => tile.hidePopover(), 200);
+  };
+  button.addEventListener("pointerenter", (event) => {
+    if (event.pointerType !== "mouse") return;
+    keepOpen();
+    if (!isOpen()) tile.showPopover({ source: button });
+  });
+  button.addEventListener("pointerleave", hideOnLeave);
+  tile.addEventListener("pointerenter", keepOpen);
+  tile.addEventListener("pointerleave", hideOnLeave);
+  button.addEventListener("click", (event) => {
+    event.preventDefault();
+    keepOpen();
+    pinned = !pinned;
+    if (!pinned) tile.hidePopover();
+    else if (!isOpen()) tile.showPopover({ source: button });
+  });
+  tile.addEventListener("toggle", () => {
+    button.setAttribute("aria-expanded", String(isOpen()));
+    if (!isOpen()) pinned = false;
+  });
   tile.addEventListener("beforetoggle", (event) => {
     if (event.newState !== "open") return;
     const rect = button.closest(".fadilah-window").getBoundingClientRect();
@@ -300,10 +310,15 @@ for (const button of timeline.querySelectorAll("[popovertarget]")) {
   });
 }
 
-byId("open-location").addEventListener("click", () => locationDialog.showModal());
-locationControls.addEventListener("locationchange", () => {
+byId("open-location").addEventListener("click", () => {
+  locationDialog.showModal();
+  const citySearch = locationControls.querySelector("[data-city]");
+  citySearch.focus();
+  citySearch.select();
+});
+locationControls.addEventListener("locationchange", ({ detail }) => {
   clearTimeout(locationTimer);
-  if (city.value === "custom") {
+  if (detail.coordinates) {
     locationTimer = setTimeout(updateLocation, 300);
   } else {
     updateLocation();
