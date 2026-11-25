@@ -44,19 +44,21 @@
     <li data-prayer-row="{{ key }}">
       <span class="prayer-name">{{ label }}</span>
       <div class="prayer-reading">
-        <strong id="time-{{ key }}">—</strong>
+        <strong class="prayer-time" id="time-{{ key }}">—</strong>
         {% if key in ("zuhr", "asr") %}
         <div class="fadilah-window" id="fadilah-{{ key }}" hidden>
           <button class="fadilah-range" type="button" popovertarget="fadilah-note-{{ key }}" aria-expanded="false"></button>
           <div class="fadilah-tile" id="fadilah-note-{{ key }}" popover aria-label="{{ label }} faḍīlah">
             <h3>{{ label }}</h3>
-            <p>Shadow growth after noon, measured in fractions of the object’s height.</p>
             <dl class="fadilah-conditions">
-              <div><dt>Window</dt><dd>{{ "2/7 to 6/7" if key == "asr" else "Noon to 4/7" }}</dd></div>
-              <div><dt>Better by</dt><dd><strong data-fadilah-preferred></strong> · {{ "4/7" if key == "asr" else "2/7" }}</dd></div>
+              <div><dt>Preferred window</dt><dd data-fadilah-note-range></dd></div>
+              <div><dt>Aim to pray by</dt><dd data-fadilah-preferred></dd></div>
             </dl>
             {% if key == "asr" %}
+            <p>Measure how much an upright object’s shadow grows after solar noon. The window opens at 2/7 of the object’s height and ends at 6/7. Praying by 4/7 is preferred.</p>
             <p>ʿAṣr may be prayed after Ẓuhr. The main entry uses a shadow increase of <span id="asr-shadow-factor"></span>.</p>
+            {% else %}
+            <p>The window starts at solar noon. It ends when an upright object’s shadow has grown by 4/7 of the object’s height. Praying by 2/7 is preferred.</p>
             {% endif %}
             <p><a href="https://www.sistani.org/persian/book/26575/6324/">Sayyid Sistani · ruling 966</a></p>
           </div>

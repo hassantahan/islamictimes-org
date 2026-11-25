@@ -136,8 +136,10 @@ function renderFadilah(windows) {
     }
 
     const button = windowLabel.querySelector(".fadilah-range");
-    button.textContent = formatRange(time);
+    const range = formatRange(time);
+    button.textContent = range;
     button.setAttribute("aria-label", PRAYERS[key] + " preferred window, " + button.textContent);
+    windowLabel.querySelector("[data-fadilah-note-range]").textContent = range;
     windowLabel.querySelector("[data-fadilah-preferred]").textContent = formatTime(time.preferred_by);
   }
 }
