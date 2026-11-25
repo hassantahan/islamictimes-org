@@ -18,6 +18,11 @@ def calendar_page():
     return render_template("calendar.html")
 
 
+@pages_bp.get("/methodology")
+def methodology():
+    return render_template("methodology.html")
+
+
 @pages_bp.get("/visibilities")
 def visibilities_page():
     return render_template("visibilities.html", maps_base=current_app.config["MAPS_BASE"])

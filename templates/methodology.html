@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Methodology · Islamic Times{% endblock %}
+
+{% block content %}
+<article class="methodology">
+  <header class="page-heading"><h1>Methodology</h1></header>
+  <section aria-labelledby="calculation-heading">
+    <h2 id="calculation-heading">How the timetable is calculated</h2>
+    <p>Prayer times use the Sun’s position for the selected place and date. Presets specify twilight angles for Fajr, Maghrib, or ʿIshāʾ, or a fixed interval where the method calls for one. Settings offers custom angles and a midnight convention. The timetable flags high-latitude estimates when a solar event is unavailable. <a class="quiet-link" href="https://praytimes.org/docs/calculation">PrayTimes calculation guide</a></p>
+    <p>The site’s Jaʿfarī preset uses the Leva parameters, including 16° for Fajr. The Najaf office publishes Fajr times based on 18°. <a class="quiet-link" href="https://imam-us.org/know-your-prayer-times">I.M.A.M. guidance on Fajr</a></p>
+  </section>
+
+  <section aria-labelledby="asr-heading">
+    <h2 id="asr-heading">ʿAṣr conventions</h2>
+    <h3>Jaʿfarī and Tehran</h3>
+    <p>On Prayer Times, these presets and Jaʿfarī-based custom angles show Sayyid Sistani’s preferred ʿAṣr window. Under his ruling, you may pray ʿAṣr as soon as you finish Ẓuhr. <a class="quiet-link" href="https://www.sistani.org/english/book/48/2209/">Sayyid Sistani · ruling 717</a></p>
+    <h3>Standard</h3>
+    <p>ʿAṣr starts when an upright object’s shadow grows by one object height beyond its noon length. This is the Mālikī, Shāfiʿī, and Ḥanbalī rule, also held by some Ḥanafī jurists. <a class="quiet-link" href="https://islamweb.net/ar/fatwa/print.php?id=117832">One-shadow ruling</a> · <a class="quiet-link" href="https://sunnah.com/tirmidhi:149">Tirmidhī 149</a></p>
+    <h3>Ḥanafī</h3>
+    <p>The option follows Abū Ḥanīfa’s well-known ruling. ʿAṣr starts when the shadow grows by twice the object’s height beyond its noon length. <a class="quiet-link" href="https://parallelquran.com/fiqh/al-hidaya/9/">Al-Marghīnānī · al-Hidāyah, Prayer Times</a></p>
+    <p>With Method default, a Jaʿfarī or Tehran calendar schedules ʿAṣr at the opening of the preferred window. Prayer Calendar applies any selected convention and mosque offsets to the timetable and downloads.</p>
+  </section>
+
+  <section id="fadilah" aria-labelledby="fadilah-heading">
+    <h2 id="fadilah-heading">Faḍīlah</h2>
+    <p>Faḍīlah is the preferred window within the time a prayer may be offered. The table shows Sayyid Sistani’s ordinary daylight rules. Each fraction refers to the growth of an upright object’s shadow beyond its noon length, measured against the object’s height.</p>
+    <div class="table-scroll" tabindex="0" role="region" aria-label="Preferred daytime prayer windows">
+      <table class="methodology-table">
+        <thead><tr><th scope="col">Prayer</th><th scope="col">Window</th><th scope="col">Aim to pray by</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Ẓuhr</th><td>Legal noon to 4/7</td><td>2/7</td></tr>
+          <tr><th scope="row">ʿAṣr</th><td>2/7 to 6/7</td><td>4/7</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>The window estimates use local sunrise and sunset. In intense heat, Sistani gives different guidance. <a class="quiet-link" href="https://www.sistani.org/persian/book/26575/6319/">Legal noon · ruling 953</a> · <a class="quiet-link" href="https://www.sistani.org/persian/book/26575/6324/">Preferred windows · rulings 966–967</a></p>
+  </section>
+</article>
+{% endblock %}

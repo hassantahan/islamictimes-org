@@ -37,6 +37,7 @@
 
   <footer class="site-footer">
     <div class="shell footer-inner">
+      <a class="quiet-link small" href="{{ url_for('pages.methodology') }}"{% if request.endpoint == 'pages.methodology' %} aria-current="page"{% endif %}>Methodology</a>
       <a class="icon-button" href="https://github.com/hassantahan/islamictimes-org" rel="noreferrer" aria-label="GitHub" title="GitHub">
         <span class="github-mark" aria-hidden="true"></span>
       </a>

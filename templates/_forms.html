@@ -41,7 +41,8 @@
   </div>
 {% endmacro %}
 
-{% macro asr_options() %}
+{% macro asr_options(preset=false) %}
+  {% if preset %}<option value="">Method default</option>{% endif %}
   <option value="0">Standard</option>
   <option value="1">Ḥanafī</option>
 {% endmacro %}

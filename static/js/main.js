@@ -1,7 +1,7 @@
 import { rememberCity, setMapLink, setupLocation } from "./shared/location.js";
 import { setupDatePicker } from "./shared/date-picker.js";
 import { getPreferences, updatePreferences } from "./shared/preferences.js";
-import { apiResponse, applySelect, civilDate, formatTime, localISO, PRAYERS, setupCustomAngles, shiftDate } from "./shared/timetable.js";
+import { apiResponse, applySelect, civilDate, formatTime, localISO, PRAYERS, setupCustomAngles, SHIA_PRESETS, shiftDate } from "./shared/timetable.js";
 
 const byId = (id) => document.getElementById(id);
 const locationControls = byId("daily-location");
@@ -19,8 +19,7 @@ const prayerRows = [...timeline.querySelectorAll("[data-prayer-row]")];
 const solarLabels = { sunrise: "Sunrise", sunset: "Sunset", midnight: "Midnight" };
 const mapFrame = byId("daily-map-frame");
 const mapLink = byId("daily-map-link");
-const fadilahGuide = byId("open-fadilah-guide");
-const sharedAfternoonMethods = new Set(["JAFARI", "TEHRAN", "CUSTOM"]);
+const fadilahMethodology = byId("fadilah-methodology");
 const prayerCutoffs = { fajr: "sunrise", zuhr: "sunset", asr: "sunset", maghrib: "midnight", isha: "midnight" };
 
 let location = locationFields.read();
@@ -41,10 +40,11 @@ function applySettings(settings) {
 }
 
 function readSettings() {
-  byId("daily-asr-option").hidden = sharedAfternoonMethods.has(method.value);
+  const shiaPreset = SHIA_PRESETS.has(method.value);
+  byId("daily-asr-option").hidden = shiaPreset;
   const settings = {
     name: method.value,
-    asr_type: Number(asr.value),
+    asr_type: shiaPreset ? undefined : Number(asr.value),
     midnight_type: midnight.value === "" ? "preset" : Number(midnight.value),
   };
   return { ...settings, ...angles.read() };
@@ -138,7 +138,7 @@ function renderHero() {
 }
 
 function renderFadilah(windows) {
-  fadilahGuide.hidden = !Object.keys(windows ?? {}).length;
+  fadilahMethodology.hidden = !Object.keys(windows ?? {}).length;
   for (const key of ["zuhr", "asr"]) {
     const time = windows?.[key];
     const windowLabel = byId("fadilah-" + key);
@@ -284,7 +284,6 @@ const datePicker = setupDatePicker((date) => {
   refresh();
 });
 dateButton.addEventListener("click", () => datePicker.open(result.date, localISO(new Date(), result.timezone)));
-fadilahGuide.addEventListener("click", () => byId("fadilah-guide").showModal());
 
 for (const button of timeline.querySelectorAll("[popovertarget]")) {
   const tile = byId(button.getAttribute("popovertarget"));

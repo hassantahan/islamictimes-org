@@ -1,6 +1,6 @@
 import { rememberCity, setupLocation } from "./shared/location.js";
 import { getPreferences, remembersPreferences, updatePreferences } from "./shared/preferences.js";
-import { apiResponse, applySelect, civilDate, formatTime, localISO, PRAYERS, setupCustomAngles } from "./shared/timetable.js";
+import { apiResponse, applySelect, civilDate, formatTime, localISO, PRAYERS, setupCustomAngles, SHIA_PRESETS } from "./shared/timetable.js";
 
 const byId = (id) => document.getElementById(id);
 const form = byId("calendar-form");
@@ -51,7 +51,8 @@ function applyProfile() {
   const setting = profile ?? getPreferences().calendar;
   applySelect(method, method.options[0].value);
   applySelect(method, setting?.method ?? daily?.name);
-  applySelect(asr, setting?.asr_type ?? daily?.asr_type ?? 0);
+  const dailyAsr = SHIA_PRESETS.has(daily?.name) ? undefined : daily?.asr_type;
+  applySelect(asr, (setting ? setting.asr_type : dailyAsr) ?? "");
   angles.apply(setting ? setting.angles : daily);
   profileName.value = profile?.name || "";
   for (const input of offsets) input.value = profile?.offset_minutes?.[input.dataset.offset] ?? 0;
@@ -60,7 +61,7 @@ function applyProfile() {
 }
 
 function readCalculation() {
-  const settings = { method: method.value, asr_type: Number(asr.value) };
+  const settings = { method: method.value, asr_type: asr.value === "" ? null : Number(asr.value) };
   if (method.value === "CUSTOM") settings.angles = angles.read();
   return settings;
 }

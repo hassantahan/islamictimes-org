@@ -34,7 +34,7 @@ def _format_prayer(prayer) -> dict[str, str]:
 
 
 
-def _optional_binary_int(value, field_name: str, default: int = 0) -> int:
+def _optional_binary_int(value, field_name: str, default: int | None = 0) -> int | None:
     if value is None:
         return default
     try:
@@ -104,7 +104,7 @@ def _build_itlocation(payload: dict) -> ITLocation:
         return loc
 
     method_name = str(method_payload.get("name", "")).upper().strip()
-    asr_type = _optional_binary_int(method_payload.get("asr_type"), "method.asr_type", default=0)
+    asr_type = _optional_binary_int(method_payload.get("asr_type"), "method.asr_type", default=None)
     # Unconfigured requests use the default preset as-is. Explicit methods
     # that omit midnight_type keep the legacy sunset-to-sunrise convention.
     midnight_raw = method_payload.get("midnight_type")
@@ -114,13 +114,15 @@ def _build_itlocation(payload: dict) -> ITLocation:
 
     try:
         if method_name and method_name not in ("CUSTOM",):
-            loc.set_prayer_method(method_name, asr_type=asr_type)
+            asr_override = {} if asr_type is None else {"asr_type": asr_type}
+            loc.set_prayer_method(method_name, **asr_override)
         else:
             angles = parse_prayer_angles(method_payload)
             if angles:
                 loc.set_custom_prayer_angles(**angles)
 
-            loc.set_asr_type(asr_type)
+            if asr_type is not None:
+                loc.set_asr_type(asr_type)
         # User override should apply regardless of preset/custom method path.
         if midnight_type is not None:
             loc.set_midnight_type(midnight_type)

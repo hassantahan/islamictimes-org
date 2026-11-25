@@ -37,23 +37,26 @@ def _profile(payload: dict) -> MosqueProfile:
     method_name = payload.get("method", DEFAULT_PRAYER_METHOD)
     if not isinstance(method_name, str) or len(method_name) > 40:
         raise ApiError("Choose a prayer calculation method.")
-    asr_type = payload.get("asr_type", 0)
-    if type(asr_type) is not int or asr_type not in (0, 1):
-        raise ApiError("Choose standard or Hanafi Asr.")
+    asr_type = payload.get("asr_type")
+    if asr_type is not None and (type(asr_type) is not int or asr_type not in (0, 1)):
+        raise ApiError("Choose method default, standard, or Hanafi Asr.")
     angles = require_json_object(payload.get("angles", {}))
     if angles.keys() - set(PRAYER_ANGLE_FIELDS):
         raise ApiError("Custom angles are available for Fajr, Maghrib, and Isha.")
 
     if method_name.strip().upper() == "CUSTOM":
         overrides = {key: Angle(value) for key, value in parse_prayer_angles(angles).items()}
-        method = replace(get_prayer_method(DEFAULT_PRAYER_METHOD), name="Custom", asr_type=asr_type, **overrides)
+        method = replace(get_prayer_method(DEFAULT_PRAYER_METHOD), name="Custom", **overrides)
     else:
         if angles:
             raise ApiError("Select Custom angles before entering angle overrides.")
         try:
-            method = replace(get_prayer_method(method_name), asr_type=asr_type)
+            method = get_prayer_method(method_name)
         except ValueError:
             raise ApiError("Choose a supported prayer calculation method.") from None
+
+    if asr_type is not None:
+        method = replace(method, asr_type=asr_type)
 
     profile = require_json_object(payload.get("profile", {}))
     name = profile.get("name", "Islamic Times")

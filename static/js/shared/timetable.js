@@ -3,6 +3,7 @@ import { getPreferences } from "./preferences.js";
 export const PRAYERS = {
   fajr: "Fajr", zuhr: "Ẓuhr", asr: "ʿAṣr", maghrib: "Maghrib", isha: "ʿIshāʾ",
 };
+export const SHIA_PRESETS = new Set(["JAFARI", "TEHRAN", "CUSTOM"]);
 
 export async function apiResponse(url, payload, signal) {
   const response = await fetch(url, {

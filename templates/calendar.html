@@ -20,7 +20,7 @@
     <div class="fields calendar-methods">
       <label>Mosque profile <select id="profile-select"><option value="">No saved profile</option></select></label>
       <label>Method <select id="calendar-method">{{ method_options(custom=true) }}</select></label>
-      <label>ʿAṣr <select id="calendar-asr">{{ asr_options() }}</select></label>
+      <label>ʿAṣr <select id="calendar-asr">{{ asr_options(preset=true) }}</select></label>
       {{ angle_fields("calendar-") }}
     </div>
 

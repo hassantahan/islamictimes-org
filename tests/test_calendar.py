@@ -17,8 +17,12 @@ class CalendarTests(unittest.TestCase):
             "profile": {"name": "Neighbourhood mosque", "offset_minutes": {"fajr": -90, "isha": 120}},
         }
 
-    def test_three_pages_render_without_cookies_or_external_application_scripts(self):
-        for url, title in (("/", "Prayer Times"), ("/calendar", "Prayer Calendar"), ("/visibilities", "Crescent Visibility")):
+    def test_pages_render_without_cookies_or_external_application_scripts(self):
+        pages = (
+            ("/", "Prayer Times"), ("/calendar", "Prayer Calendar"),
+            ("/visibilities", "Crescent Visibility"), ("/methodology", "Methodology"),
+        )
+        for url, title in pages:
             with self.subTest(url=url):
                 response = self.client.get(url)
                 self.assertEqual(response.status_code, 200)
@@ -78,6 +82,8 @@ class CalendarTests(unittest.TestCase):
         self.assertIn("Jafari", daily["method"]["name"])
         self.assertEqual(daily["method"]["midnight_type"], 1)
         self.assertEqual(daily["method"]["maghrib_angle"]["decimal"], 4)
+        self.assertEqual(datetime.fromisoformat(daily["asr"]["time"]).isoformat(timespec="seconds"),
+                         daily["fadilah"]["asr"]["start"])
         for key in ("fajr", "zuhr", "asr", "maghrib", "isha"):
             self.assertEqual(calendar["days"][0]["prayers"][key]["time"],
                              datetime.fromisoformat(daily[key]["time"]).isoformat(timespec="seconds"))

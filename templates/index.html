@@ -56,11 +56,10 @@
             </dl>
             {% if key == "asr" %}
             <p>Measure how much an upright object’s shadow grows after solar noon. The window opens at 2/7 of the object’s height and ends at 6/7. Praying by 4/7 is preferred.</p>
-            <p>You may pray ʿAṣr as soon as you finish Ẓuhr. <a href="https://www.sistani.org/english/book/48/2209/">Prayer timing</a></p>
+            <p>You may pray ʿAṣr as soon as you finish Ẓuhr.</p>
             {% else %}
             <p>The window starts at solar noon. It ends when an upright object’s shadow has grown by 4/7 of the object’s height. Praying by 2/7 is preferred.</p>
             {% endif %}
-            <p><a href="https://www.sistani.org/persian/book/26575/6324/">Sayyid Sistani · ruling 966</a></p>
           </div>
         </div>
         {% endif %}
@@ -75,7 +74,7 @@
       <div><dt>{{ label }}</dt><dd id="time-{{ key }}">—</dd></div>
       {% endfor %}
     </dl>
-    <button type="button" class="text-button small" id="open-fadilah-guide" aria-haspopup="dialog" hidden>About Faḍīlah</button>
+    <a class="quiet-link small" id="fadilah-methodology" href="{{ url_for('pages.methodology') }}#fadilah" hidden>About Faḍīlah</a>
     <p id="daily-status" class="small status" role="status"></p>
   </div>
 </section>
@@ -146,18 +145,6 @@
   <p class="small status" id="date-picker-status" role="status"></p>
 </dialog>
 
-<dialog class="dialog" id="fadilah-guide" aria-labelledby="fadilah-guide-title">
-  <form method="dialog" class="dialog-heading">
-    <h2 id="fadilah-guide-title">Faḍīlah</h2>
-    <button class="icon-button dialog-close" type="submit" aria-label="Close Faḍīlah guide">×</button>
-  </form>
-  <div class="guide-copy">
-    <p>Faḍīlah is the preferred window within the time a prayer may be offered.</p>
-    <p>Open a range to see the shadow rule and when it’s better to pray by.</p>
-    <p>Sayyid Sistani gives separate guidance for intense heat.</p>
-    <p><a href="https://www.sistani.org/persian/book/26575/6324/">Sayyid Sistani · rulings 966–967</a></p>
-  </div>
-</dialog>
 {% endblock %}
 
 {% block calculation_settings %}
