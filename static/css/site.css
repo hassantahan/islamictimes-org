@@ -140,8 +140,10 @@ select {
 .date-month { display: flex; justify-content: space-between; align-items: center; gap: .25rem; }
 .date-month > button { font-size: 1.45rem; }
 .date-month > button:disabled { opacity: .36; }
-.date-month-title { display: flex; align-items: center; justify-content: center; gap: .35rem; font-size: 1.15rem; font-weight: 600; }
-.date-month-title #date-year { width: 4.7rem; min-height: 2rem; padding: .2rem .35rem; font-size: .95rem; }
+.date-month-title { display: flex; align-items: baseline; justify-content: center; gap: .18rem; font-size: 1.2rem; font-weight: 600; }
+.date-month-title #date-year { width: 4.8ch; min-height: 2rem; padding: .05rem .18rem; appearance: textfield; border: 0; border-bottom: 1px dotted var(--control); border-radius: .2rem .2rem 0 0; background: transparent; font: inherit; font-variant-numeric: lining-nums tabular-nums; text-align: center; }
+#date-year:hover, #date-year:focus { background: var(--field-fill); }
+#date-year::-webkit-inner-spin-button, #date-year::-webkit-outer-spin-button { appearance: none; margin: 0; }
 #date-hijri-months { min-height: 1.5em; margin: .3rem 0 .8rem; text-align: center; }
 .date-grid { table-layout: fixed; width: 100%; border-collapse: collapse; text-align: center; }
 .date-grid th { color: var(--muted); font-weight: 550; }
@@ -151,7 +153,9 @@ select {
 .date-grid td button[aria-current="date"] { border-color: var(--control); }
 .date-hijri { color: var(--link); }
 .date-grid .date-hijri { font-size: .74rem; font-weight: 450; }
-.date-picker-footer { display: flex; justify-content: space-between; align-items: baseline; gap: .5rem; margin-top: .65rem; }
+.date-picker-footer { display: flex; justify-content: space-between; align-items: center; gap: .5rem; margin-top: .65rem; }
+.date-picker-actions { display: flex; gap: .5rem; }
+.date-picker-actions .button { min-width: 3.25rem; min-height: 2.25rem; }
 .prayer-sheet { background: var(--surface); border: 1px solid var(--line); border-top: 0; }
 .prayer-clock { display: flex; align-items: center; gap: clamp(1rem, 5vw, 3.4rem); min-height: 8rem; padding: clamp(.9rem, 2.2vw, 1.4rem) clamp(1rem, 3vw, 2rem); background: var(--band); color: var(--clock-ink); }
 .clock-label { color: var(--clock-muted); font-size: .92rem; font-weight: 565; }

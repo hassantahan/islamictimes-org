@@ -122,11 +122,7 @@
   <p class="small status" id="location-error" role="status"></p>
 </dialog>
 
-<dialog class="dialog date-dialog" id="date-dialog" aria-labelledby="date-picker-title">
-  <form method="dialog" class="dialog-heading">
-    <h2 id="date-picker-title">Choose date</h2>
-    <button class="icon-button dialog-close" type="submit" aria-label="Close date picker">×</button>
-  </form>
+<dialog class="dialog date-dialog" id="date-dialog" aria-label="Choose date">
   <div class="date-month">
     <button class="icon-button" id="date-previous" type="button" aria-label="Previous month">‹</button>
     <div class="date-month-title">
@@ -142,7 +138,10 @@
   </table>
   <div class="date-picker-footer">
     <button class="text-button small" id="date-today" type="button">Today</button>
-    <span class="muted small">Gregorian <span class="date-hijri">/ Hijri</span></span>
+    <form method="dialog" class="date-picker-actions">
+      <button class="button button-subtle" type="submit">Cancel</button>
+      <button class="button button-primary" id="date-apply" type="button">OK</button>
+    </form>
   </div>
   <p class="small status" id="date-picker-status" role="status"></p>
 </dialog>

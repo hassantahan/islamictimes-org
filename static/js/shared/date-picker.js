@@ -17,9 +17,10 @@ export function setupDatePicker(selectDate) {
   const next = byId("date-next");
   const monthName = byId("date-month-name");
   const days = byId("date-days");
+  const apply = byId("date-apply");
   const hijriMonths = byId("date-hijri-months");
   const status = byId("date-picker-status");
-  let selected;
+  let draft;
   let today;
   let month;
   let year;
@@ -34,9 +35,17 @@ export function setupDatePicker(selectDate) {
     byId("date-weekdays").append(heading);
   }
 
-  function choose(date) {
-    dialog.close();
-    selectDate(date);
+  function stageDate(date) {
+    draft = date;
+    const day = days.querySelector('[data-date="' + date + '"]');
+    if (!day) {
+      showMonth(date, true);
+      return;
+    }
+    days.querySelector('[aria-pressed="true"]')?.setAttribute("aria-pressed", "false");
+    day.setAttribute("aria-pressed", "true");
+    focusDay(day, true);
+    apply.disabled = false;
   }
 
   function focusDay(button, moveFocus) {
@@ -55,6 +64,7 @@ export function setupDatePicker(selectDate) {
     yearField.value = year;
     previous.disabled = first === FIRST_DATE;
     next.disabled = first.slice(0, 7) === LAST_DATE.slice(0, 7);
+    apply.disabled = !draft.startsWith(first.slice(0, 7));
     hijriMonths.textContent = "";
     status.textContent = "";
 
@@ -68,7 +78,7 @@ export function setupDatePicker(selectDate) {
       button.type = "button";
       button.dataset.date = date;
       button.tabIndex = -1;
-      button.setAttribute("aria-pressed", String(date === selected));
+      button.setAttribute("aria-pressed", String(date === draft));
       if (date === today) button.setAttribute("aria-current", "date");
       const gregorian = document.createElement("span");
       gregorian.textContent = day;
@@ -81,7 +91,7 @@ export function setupDatePicker(selectDate) {
     }
 
     const targetButton = buttons.find(({ dataset }) => dataset.date === target) ??
-      buttons.find(({ dataset }) => dataset.date === selected) ?? buttons[0];
+      buttons.find(({ dataset }) => dataset.date === draft) ?? buttons[0];
     focusDay(targetButton, moveFocus);
 
     request?.abort();
@@ -122,18 +132,30 @@ export function setupDatePicker(selectDate) {
 
   previous.addEventListener("click", () => browse(-1));
   next.addEventListener("click", () => browse(1));
-  yearField.addEventListener("change", () => {
+  function jumpToYear() {
     if (!yearField.value || !yearField.reportValidity()) {
       yearField.value = year;
       return;
     }
-    showMonth(monthDate(yearField.valueAsNumber, month));
+    if (yearField.valueAsNumber !== year) showMonth(monthDate(yearField.valueAsNumber, month));
+  }
+
+  yearField.addEventListener("change", jumpToYear);
+  yearField.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      jumpToYear();
+    }
   });
-  byId("date-today").addEventListener("click", () => choose(today));
+  byId("date-today").addEventListener("click", () => stageDate(today));
+  apply.addEventListener("click", () => {
+    dialog.close();
+    selectDate(draft);
+  });
   dialog.addEventListener("close", () => request?.abort());
   days.addEventListener("click", (event) => {
     const button = event.target.closest("[data-date]");
-    if (button) choose(button.dataset.date);
+    if (button) stageDate(button.dataset.date);
   });
   days.addEventListener("keydown", (event) => {
     const date = event.target.dataset.date;
@@ -154,7 +176,7 @@ export function setupDatePicker(selectDate) {
 
   return {
     open(date, currentDate) {
-      selected = date;
+      draft = date;
       today = currentDate;
       dialog.showModal();
       showMonth(date, true);
