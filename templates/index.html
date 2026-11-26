@@ -1,144 +1,206 @@
 {% extends "base.html" %}
-{% block title %}Prayer Times{% endblock %}
-
-{% block header_actions %}
-  <button id="open-adv" class="inline-flex h-9 w-9 items-center justify-center rounded-md border border-gray-200 text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700" type="button" aria-label="Open advanced settings">
-    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-      <path stroke-linecap="round" d="M5 6.5h14M5 12h14M5 17.5h14"/>
-      <circle cx="9" cy="6.5" r="1.5" fill="currentColor" stroke="none"/>
-      <circle cx="15" cy="12" r="1.5" fill="currentColor" stroke="none"/>
-      <circle cx="11" cy="17.5" r="1.5" fill="currentColor" stroke="none"/>
-    </svg>
-  </button>
-{% endblock %}
+{% from "_forms.html" import location_fields, method_options, asr_options, angle_fields %}
+{% block title %}Prayer Times · Islamic Times{% endblock %}
 
 {% block content %}
-<section id="results" class="mb-8">
-  <div class="flex flex-col sm:flex-row justify-center items-center space-y-2 sm:space-y-0 sm:space-x-4 mb-4">
-    <h2 id="current-date-display" class="text-center text-lg font-medium"></h2>
-    <input type="date" id="date-picker" class="border rounded px-3 py-2 dark:bg-gray-700 dark:border-gray-600">
-  </div>
-
-  <div id="lat-alert"
-       class="hidden mx-auto mb-4 max-w-md text-center text-sm px-3 py-2 rounded border border-yellow-400 bg-yellow-50 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200 dark:border-yellow-700">
-    Prayer times at this latitude and date are not well established.
-  </div>
-
-  <div class="overflow-x-auto max-w-md mx-auto">
-    <table class="min-w-full bg-white dark:bg-gray-800 shadow rounded-lg">
-      <tbody id="prayer-body" class="divide-y">
-        <tr><td class="px-4 py-2 font-medium">Fajr</td><td id="time-fajr" class="px-4 py-2 text-right">--:--</td></tr>
-        <tr><td class="px-4 py-2 font-medium">Sunrise</td><td id="time-sunrise" class="px-4 py-2 text-right">--:--</td></tr>
-        <tr><td class="px-4 py-2 font-medium">Zuhr</td><td id="time-zuhr" class="px-4 py-2 text-right">--:--</td></tr>
-        <tr><td class="px-4 py-2 font-medium">Asr</td><td id="time-asr" class="px-4 py-2 text-right">--:--</td></tr>
-        <tr><td class="px-4 py-2 font-medium">Sunset</td><td id="time-sunset" class="px-4 py-2 text-right">--:--</td></tr>
-        <tr><td class="px-4 py-2 font-medium">Maghrib</td><td id="time-maghrib" class="px-4 py-2 text-right">--:--</td></tr>
-        <tr><td class="px-4 py-2 font-medium">Isha</td><td id="time-isha" class="px-4 py-2 text-right">--:--</td></tr>
-        <tr><td class="px-4 py-2 font-medium">Midnight</td><td id="time-midnight" class="px-4 py-2 text-right">--:--</td></tr>
-        <tr><td class="px-4 py-2 font-medium">Hijri Date (±1 Day)</td><td id="time-hijri" class="px-4 py-2 text-right">—</td></tr>
-      </tbody>
-    </table>
-  </div>
-
-  <div id="qibla-card" class="max-w-md mx-auto mt-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 shadow">
-    <div class="flex items-center justify-between">
-      <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Qibla Direction</h3>
-      <span id="qibla-cardinal" class="text-xs font-medium px-2 py-1 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-200">—</span>
+<section class="page-heading daily-heading">
+  <h1>Prayer Times</h1>
+  <div class="daily-date-group">
+    <div class="day-dates">
+      <time id="hero-date"></time>
+      <p id="daily-hijri"></p>
     </div>
-
-    <div class="mt-3 flex items-center gap-4">
-      <div class="relative h-20 w-20 rounded-full border-2 border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50">
-        <div class="absolute inset-x-0 top-1 text-center text-[10px] font-semibold text-gray-500 dark:text-gray-400">N</div>
-        <div id="qibla-needle" class="absolute left-1/2 top-1/2 h-8 w-1 -translate-x-1/2 -translate-y-full origin-bottom rounded bg-emerald-600 transition-transform duration-300"></div>
-        <div class="absolute left-1/2 top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-emerald-600"></div>
-      </div>
-
-      <div class="space-y-1 text-sm">
-        <div class="text-gray-600 dark:text-gray-300">
-          Heading:
-          <span id="qibla-angle" class="font-medium text-gray-900 dark:text-gray-100">—</span>
-        </div>
-        <div class="text-gray-600 dark:text-gray-300">
-          Distance:
-          <span id="qibla-distance" class="font-medium text-gray-900 dark:text-gray-100">—</span>
-        </div>
-      </div>
+    <div class="date-control">
+      <button class="icon-button" id="open-date-picker" type="button" aria-label="Choose date" title="Choose date" aria-haspopup="dialog" disabled>
+        <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" aria-hidden="true">
+          <rect x="3.5" y="5.5" width="17" height="15" rx="2"></rect>
+          <path d="M7.5 3.5v4m9-4v4M3.5 10h17"></path>
+          <circle cx="12" cy="15" r="1" fill="currentColor" stroke="none"></circle>
+        </svg>
+      </button>
     </div>
   </div>
-
-  <h3 id="method-display-bottom" class="text-center text-sm text-gray-600 dark:text-gray-400 mt-4"></h3>
 </section>
 
-<section class="max-w-md mx-auto space-y-4">
-  <form id="manual-form" class="space-y-2">
-    <input type="text" id="city" placeholder="City / Address" autocomplete="off"
-           class="w-full border rounded px-3 py-2 dark:bg-gray-700 dark:border-gray-600"/>
-    <ul id="autocomplete-suggestions"
-        class="border bg-white dark:bg-gray-700 dark:border-gray-600 rounded hidden max-h-40 overflow-y-auto"></ul>
-
-    <div class="flex space-x-4">
-      <input type="number" id="lat" min="-90" max="90" step="0.000001" placeholder="Latitude"
-             class="flex-1 border rounded px-3 py-2 dark:bg-gray-700 dark:border-gray-600"/>
-      <input type="number" id="lon" min="-180" max="180" step="0.000001" placeholder="Longitude"
-             class="flex-1 border rounded px-3 py-2 dark:bg-gray-700 dark:border-gray-600"/>
+<section class="prayer-sheet" aria-label="Daily prayer times">
+  <div class="prayer-clock" id="prayer-clock">
+    <div class="current-prayer" id="current-prayer" hidden>
+      <p class="clock-label" id="current-prayer-label">Current prayer</p>
+      <p id="current-prayer-name">—</p>
     </div>
+    <div class="next-prayer">
+      <p class="clock-label" id="hero-label">Next prayer</p>
+      <div class="clock-reading">
+        <h2 id="hero-prayer">—</h2>
+        <p class="clock-time" id="hero-time"></p>
+      </div>
+      <p class="clock-day small" id="hero-day" hidden></p>
+    </div>
+  </div>
 
-    <button type="submit" class="bg-emerald-600 text-white py-2 w-full rounded-lg">Use Manual Location</button>
+  <ul class="prayer-timeline" id="daily-timeline" role="list" aria-label="Daily schedule" aria-busy="false">
+    {% for key, label, landmark, landmark_label in [
+      ('fajr', 'Fajr', 'sunrise', 'Sunrise'),
+      ('zuhr', 'Ẓuhr', none, none),
+      ('asr', 'ʿAṣr', none, none),
+      ('maghrib', 'Maghrib', 'sunset', 'Sunset'),
+      ('isha', 'ʿIshāʾ', 'midnight', 'Midnight'),
+    ] %}
+    <li data-prayer-row="{{ key }}">
+      <div class="prayer-card">
+        <span class="prayer-name">{{ label }}<span class="visually-hidden" data-prayer-state></span>{% if key in ("asr", "isha") %} <span class="prayer-preferred-label" id="{{ key }}-preferred-label" hidden>Preferred</span>{% endif %}</span>
+        <div class="prayer-reading">
+          <strong class="prayer-time" id="time-{{ key }}">—</strong>
+          {% set evening = key in ('maghrib', 'isha') %}
+          <div class="fadilah-window{% if evening %} evening-window{% endif %}" id="fadilah-{{ key }}" hidden>
+            <button class="fadilah-range" type="button" popovertarget="fadilah-note-{{ key }}" aria-expanded="false"></button>
+            <div class="timetable-note" id="fadilah-note-{{ key }}" popover aria-labelledby="fadilah-title-{{ key }}">
+              <h3 id="fadilah-title-{{ key }}">{{ label }} Faḍīlah</h3>
+              <dl class="fadilah-conditions">
+                <div{% if key == 'fajr' %} data-fajr-note-window{% endif %}><dt>{{ 'Estimated window' if evening or key == 'fajr' else 'Preferred window' }}</dt><dd data-fadilah-note-range></dd></div>
+                {% if key == 'fajr' %}
+                <div data-fajr-note-opening hidden><dt>Starts</dt><dd data-fajr-start></dd></div>
+                {% elif not evening %}
+                <div><dt>Aim to pray by</dt><dd data-fadilah-preferred></dd></div>
+                {% endif %}
+              </dl>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% if landmark %}
+      <dl class="solar-landmark{% if landmark == 'midnight' %} solar-landmark-end{% endif %}">
+        <dt{% if landmark == 'midnight' %} id="midnight-label"{% endif %}>{{ landmark_label }}</dt>
+        <dd>
+          {% if landmark == 'midnight' %}
+          <button class="midnight-note-trigger" id="open-midnight-note" type="button" popovertarget="midnight-note" aria-labelledby="midnight-label time-midnight" aria-expanded="false" disabled><span id="time-midnight">—</span></button>
+          <div class="timetable-note" id="midnight-note" popover aria-labelledby="midnight-note-title">
+            <h3 id="midnight-note-title">Islamic midnight</h3>
+            <p>Halfway from sunset to the next <span id="midnight-note-end"></span>.</p>
+          </div>
+          {% else %}
+          <span id="time-{{ landmark }}">—</span>
+          {% endif %}
+        </dd>
+      </dl>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+
+  <div class="prayer-gauge" id="prayer-gauge" role="group" hidden>
+    <div class="gauge-track">
+      <div class="gauge-periods"></div>
+      <span class="gauge-now"></span>
+    </div>
+    <div class="gauge-labels" aria-hidden="true"></div>
+  </div>
+  <p id="daily-status" class="small status" role="status"></p>
+</section>
+
+<div class="daily-tools">
+  <section class="daily-location-panel" aria-labelledby="location-title">
+    <h2 id="location-title">Location</h2>
+    <button class="location-button" id="open-location" type="button" aria-haspopup="dialog" aria-labelledby="location-title daily-heading-location">
+      <span id="daily-heading-location">Toronto, Canada</span>
+      <svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="m6 3.5 4.5 4.5L6 12.5"></path>
+      </svg>
+    </button>
+  </section>
+
+  <div class="location-map">
+    <iframe id="daily-map-frame" title="Location and Qibla direction on OpenStreetMap" referrerpolicy="no-referrer" credentialless hidden></iframe>
+    <p class="muted small" id="map-notice" hidden>Map unavailable at this latitude.</p>
+  </div>
+
+  <section class="qibla-section" aria-labelledby="qibla-title">
+    <div>
+      <h2 id="qibla-title">Qibla</h2>
+      <p class="qibla-angle" id="qibla-angle" title="Bearing from true north">—</p>
+      <p class="muted small" id="qibla-distance" title="Distance to the Kaaba"></p>
+    </div>
+    <div class="qibla-dial" aria-hidden="true">
+      <span class="dial-north">N</span><span class="dial-east">E</span>
+      <span class="dial-south">S</span><span class="dial-west">W</span>
+      <span class="qibla-needle" id="qibla-needle"></span>
+    </div>
+  </section>
+</div>
+
+<dialog class="dialog location-dialog" id="location-dialog" aria-labelledby="location-dialog-title">
+  <form method="dialog" class="dialog-heading">
+    <h2 id="location-dialog-title">Location</h2>
+    <button class="icon-button dialog-close" type="submit" aria-label="Close location">×</button>
   </form>
+  <form id="daily-location-form" novalidate>
+    <div class="location-fields" id="daily-location">
+      {{ location_fields(map_link=false) }}
+    </div>
+    <p class="small status" id="location-error" role="status"></p>
+    <div class="location-actions">
+      <button class="button button-primary" type="submit" id="location-apply">OK</button>
+    </div>
+  </form>
+</dialog>
 
-  <button type="button" id="use-gps" class="w-full bg-blue-500 text-white py-2 rounded-lg">Use Precise GPS</button>
-
-  <div id="map-container" class="w-full h-64 bg-gray-300 dark:bg-gray-700 rounded-lg overflow-hidden">
-    <iframe id="map" class="w-full h-full" src="" frameborder="0" scrolling="no" loading="lazy"></iframe>
+<dialog class="dialog date-dialog" id="date-dialog" aria-label="Choose date">
+  <div class="date-month">
+    <button class="icon-button" id="date-previous" type="button" aria-label="Previous month">‹</button>
+    <div class="date-month-title">
+      <span id="date-month-name"></span>
+      <input id="date-year" aria-label="Year" type="number" min="1900" max="2100" step="1">
+    </div>
+    <button class="icon-button" id="date-next" type="button" aria-label="Next month">›</button>
   </div>
+  <p class="muted small" id="date-hijri-months"></p>
+  <table class="date-grid" aria-label="Gregorian and calculated Hijri days">
+    <thead><tr id="date-weekdays"></tr></thead>
+    <tbody id="date-days"></tbody>
+  </table>
+  <div class="date-picker-footer">
+    <button class="text-button small" id="date-today" type="button">Today</button>
+    <form method="dialog" class="date-picker-actions">
+      <button class="button button-subtle" type="submit">Cancel</button>
+      <button class="button button-primary" id="date-apply" type="button">OK</button>
+    </form>
+  </div>
+  <p class="small status" id="date-picker-status" role="status"></p>
+</dialog>
+
+{% endblock %}
+
+{% block calculation_settings %}
+<section class="calculation-settings" id="daily-calculation" aria-label="Calculation">
+  <label>Method <select id="daily-method">{{ method_options(prayer_presets, custom=true) }}</select></label>
+  <details class="coordinate-fields" id="daily-advanced">
+    <summary>Options</summary>
+    <div class="fields two-fields">
+      <label id="daily-asr-option" hidden>ʿAṣr <select id="daily-asr">{{ asr_options() }}</select></label>
+      <label>Midnight <select id="daily-midnight">
+        <option value="">Method default</option><option value="0">Sunset to sunrise</option><option value="1">Sunset to Fajr</option>
+      </select></label>
+      {{ angle_fields() }}
+      <label id="evening-model-option" hidden>Evening twilight
+        <select id="evening-model">
+          <option value="seasonal">Seasonal</option>
+          <option value="blend">Seasonal + 14° (experimental)</option>
+          <option value="solar_descent">Solar descent (experimental)</option>
+        </select>
+      </label>
+      <label id="fajr-end-option" hidden>Local <i>Fajr</i> preferred end (°)
+        <input id="fajr-end-angle" type="number" min="0" max="90" step="any" placeholder="Default estimate">
+      </label>
+    </div>
+  </details>
+  <p class="small status" id="calculation-error" role="status"></p>
 </section>
+{% endblock %}
 
-<div id="spinner" class="fixed inset-0 flex items-center justify-center bg-white/60 dark:bg-black/60 hidden">
-  <img src="{{ url_for('static', filename='img/spinner.svg') }}" class="w-16 h-16 animate-spin" alt="Loading"/>
-</div>
-
-<div id="adv-modal" class="fixed inset-0 flex items-center justify-center bg-black/50 hidden">
-  <div class="bg-white dark:bg-gray-800 rounded-lg max-w-3xl w-full p-6 relative">
-    <button type="button" id="close-adv" class="absolute top-3 right-3 text-gray-500">✖</button>
-    <h3 class="text-lg font-medium mb-4">Advanced Settings</h3>
-
-    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      <select id="method" class="border rounded px-3 py-2 dark:bg-gray-700 dark:border-gray-600">
-        <option value="JAFARI">Shia Ithna Ashari, Leva Institute (Jafari)</option>
-        <option value="TEHRAN">University of Tehran (Tehran)</option>
-        <option value="ISNA">Islamic Society of North America (ISNA)</option>
-        <option value="MWL">Muslim World League (MWL)</option>
-        <option value="MAKKAH">Umm al-Qura University (Makkah)</option>
-        <option value="EGYPT">Egyptian General Authority (Egypt)</option>
-        <option value="KARACHI">University of Islamic Sciences (Karachi)</option>
-        <option value="CUSTOM">Custom Angles</option>
-      </select>
-
-      <select id="asr" class="border rounded px-3 py-2 dark:bg-gray-700 dark:border-gray-600">
-        <option value="standard">Asr: Standard</option>
-        <option value="hanafi">Asr: Hanafi</option>
-      </select>
-
-      <select id="midnight" class="border rounded px-3 py-2 dark:bg-gray-700 dark:border-gray-600">
-        <option value="standard">Midnight: Sunset–Sunrise</option>
-        <option value="jafari">Midnight: Sunset–Fajr (Jafari)</option>
-      </select>
-
-      <input id="fajr_angle" type="number" min="0" max="90" step="0.1" placeholder="Fajr angle°"
-             class="border rounded px-3 py-2 hidden dark:bg-gray-700 dark:border-gray-600"/>
-      <input id="maghrib_angle" type="number" min="0" max="90" step="0.1" placeholder="Maghrib angle°"
-             class="border rounded px-3 py-2 hidden dark:bg-gray-700 dark:border-gray-600"/>
-      <input id="isha_angle" type="number" min="0" max="90" step="0.1" placeholder="Isha angle°"
-             class="border rounded px-3 py-2 hidden dark:bg-gray-700 dark:border-gray-600"/>
-    </div>
-
-    <div class="mt-6 text-right">
-      <button type="button" id="compute-btn" class="bg-blue-600 text-white py-2 px-6 rounded-lg">Compute</button>
-    </div>
-  </div>
-</div>
+{% block display_settings %}
+<label class="checkbox-label timeline-setting"><input type="checkbox" id="preference-timeline"> Show prayer timeline</label>
 {% endblock %}
 
 {% block scripts %}
-<script type="module" src="{{ url_for('static', filename='js/main.js', v='20260228-4') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>
 {% endblock %}

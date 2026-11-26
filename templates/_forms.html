@@ -1,0 +1,46 @@
+{% macro location_fields(map_link=true) %}
+  <div class="city-search">
+    <label>City
+      <input data-city type="search" placeholder="Search cities" autocomplete="off" spellcheck="false"
+        role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="city-results">
+    </label>
+    <ul class="city-results" data-city-results id="city-results" role="listbox" aria-label="Matching cities" hidden></ul>
+    <p class="small muted status" data-city-status role="status"></p>
+  </div>
+  <details class="coordinate-fields" data-coordinate-details>
+    <summary>Coordinates</summary>
+    <div class="fields two-fields">
+      <label>Latitude <input data-latitude autocomplete="off" type="number" min="-90" max="90" step="any" placeholder="43.65"></label>
+      <label>Longitude <input data-longitude autocomplete="off" type="number" min="-180" max="180" step="any" placeholder="−79.38"></label>
+    </div>
+    <button class="button button-subtle" data-geolocate type="button">Use device location</button>
+    <p class="small muted" data-location-status role="status"></p>
+    {% if map_link %}
+    <a class="quiet-link small" href="https://www.openstreetmap.org/" target="_blank" rel="noopener noreferrer">Find coordinates on OpenStreetMap</a>
+    {% endif %}
+  </details>
+  <a class="quiet-link small city-credit" href="https://www.geonames.org/" target="_blank" rel="noopener noreferrer">City data · GeoNames</a>
+{% endmacro %}
+
+{% macro method_options(prayer_presets, custom=false) %}
+  {% for tradition, presets in prayer_presets if presets %}
+  <optgroup label="{{ tradition }}">
+    {% for key, label, _method in presets %}<option value="{{ key }}">{{ label }}</option>{% endfor %}
+  </optgroup>
+  {% endfor %}
+  {% if custom %}<option value="CUSTOM">Custom angles</option>{% endif %}
+{% endmacro %}
+
+{% macro angle_fields(prefix="") %}
+  <div class="fields three-fields full-width" id="{{ prefix }}custom-angles" hidden>
+    {% for key, label, default in [('fajr', 'Fajr', 16), ('maghrib', 'Maghrib', 4), ('isha', 'ʿIshāʾ', 'Preferred window')] %}
+      <label>{{ label }} angle <input id="{{ prefix }}{{ key }}-angle" data-prayer-angle="{{ key }}_angle" type="number" min="0" max="90" step="any" placeholder="{{ default }}" disabled></label>
+    {% endfor %}
+  </div>
+{% endmacro %}
+
+{% macro asr_options(preset=false) %}
+  {% if preset %}<option value="">Method default</option>{% endif %}
+  <option value="0">Standard</option>
+  <option value="1">Ḥanafī</option>
+{% endmacro %}

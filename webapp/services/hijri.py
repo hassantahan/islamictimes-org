@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from calendar import monthrange
+from dataclasses import asdict, dataclass
 
 from islamic_times.time_equations import gregorian_to_hijri
 
@@ -38,6 +39,17 @@ def hijri_from_gregorian_date(date_str: str) -> HijriDate:
     dt = parse_iso_date(date_str)
     h_year, h_month, h_day = gregorian_to_hijri(dt.year, dt.month, dt.day)
     return HijriDate(year=h_year, month=h_month, day=h_day)
+
+
+def hijri_month_grid(year: int, month: int) -> list[dict[str, int | str]]:
+    if not 1900 <= year <= 2100 or not 1 <= month <= 12:
+        raise ApiError("Choose a month between 1900 and 2100.")
+
+    days = []
+    for day in range(1, monthrange(year, month)[1] + 1):
+        hijri = hijri_from_gregorian_date(f"{year:04d}-{month:02d}-{day:02d}")
+        days.append({**asdict(hijri), "month_name": hijri.month_name})
+    return days
 
 
 def upcoming_hijri_month(date_str: str) -> dict[str, int | str]:

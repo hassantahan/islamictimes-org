@@ -1,5 +1,6 @@
 Flask>=2.0
-islamic_times>=3.0.0
-timezonefinder>=6.1.0
+islamic_times>=3.2.0,<4
+# The 8.2 release restores full timezone boundaries for historical schedules.
+timezonefinder>=8.2,<9
 requests>=2.25.1
 gunicorn

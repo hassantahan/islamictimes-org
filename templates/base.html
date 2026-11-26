@@ -1,85 +1,72 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
   <title>{% block title %}Islamic Times{% endblock %}</title>
-
-  <script>
-    (function () {
-      try {
-        const stored = localStorage.getItem("theme");
-        const normalized = stored === "dark" || stored === "light" ? stored : null;
-        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-        const useDark = normalized ? normalized === "dark" : prefersDark;
-        const root = document.documentElement;
-        root.classList.toggle("dark", useDark);
-        root.setAttribute("data-theme", useDark ? "dark" : "light");
-      } catch (_) {
-        // Ignore storage access issues; default theme classes remain usable.
-      }
-    })();
-  </script>
-
-  <script>
-    (function () {
-      const tw = window.tailwind || {};
-      tw.config = {
-        darkMode: "class",
-        safelist: [
-          "dark:bg-gray-900",
-          "dark:bg-gray-800",
-          "dark:bg-gray-700",
-          "dark:text-gray-100",
-          "dark:text-gray-400",
-          "dark:border-gray-600"
-        ]
-      };
-      window.tailwind = tw;
-    })();
-  </script>
-  <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
-
-  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='img/icons/apple-touch-icon.png') }}">
-  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='img/icons/favicon-32x32.png') }}">
-  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='img/icons/favicon-16x16.png') }}">
-  <link rel="manifest" href="{{ url_for('static', filename='img/icons/site.webmanifest') }}">
+  <link rel="icon" href="{{ url_for('static', filename='img/icons/favicon-32x32.png') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/site.css') }}">
+  <script type="module" src="{{ url_for('static', filename='js/shared/preferences.js') }}"></script>
 </head>
-<body class="bg-gray-100 text-gray-900 dark:bg-gray-900 dark:text-gray-100 flex flex-col min-h-screen">
-  <header class="bg-white dark:bg-gray-800 shadow-sm">
-    <div class="container mx-auto px-4 py-3 flex items-center justify-between">
-      <h1 class="text-lg font-semibold"><a href="/">Islamic Times</a></h1>
-
-      <nav class="flex space-x-6 text-sm font-medium">
-        <a href="/" class="hover:underline">Prayers</a>
-        <a href="/visibilities" class="hover:underline">Visibilities</a>
-        <a href="https://www.github.com/hassantahan/islamictimes-org" class="hover:underline" target="_blank" rel="noopener noreferrer">GitHub</a>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="shell header-inner">
+      <a class="wordmark" href="{{ url_for('pages.index') }}">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span>Islamic Times</span>
+      </a>
+      <nav class="site-nav" aria-label="Main navigation">
+        {% for endpoint, label in [('pages.index', 'Prayer Times'), ('pages.visibilities_page', 'Crescent')] %}
+          <a href="{{ url_for(endpoint) }}" {% if request.endpoint == endpoint %}aria-current="page"{% endif %}>{{ label }}</a>
+        {% endfor %}
       </nav>
-
-      <div class="flex items-center space-x-3">
-        <button id="theme-toggle" class="inline-flex h-9 w-9 items-center justify-center rounded-md border border-gray-200 text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700" type="button" aria-label="Toggle dark mode">
-          <svg id="theme-icon-moon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-            <path d="M21.75 15.002A9.75 9.75 0 0 1 9 2.25a.75.75 0 0 0-.926.926 8.25 8.25 0 1 0 11.75 11.75.75.75 0 0 0 .926-.924Z"/>
-          </svg>
-          <svg id="theme-icon-sun" xmlns="http://www.w3.org/2000/svg" class="hidden h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
-            <circle cx="12" cy="12" r="3.75"></circle>
-            <path stroke-linecap="round" d="M12 2.75v2.25M12 19v2.25M5.46 5.46l1.59 1.59M16.95 16.95l1.59 1.59M2.75 12H5M19 12h2.25M5.46 18.54l1.59-1.59M16.95 7.05l1.59-1.59"/>
-          </svg>
-        </button>
-        {% block header_actions %}{% endblock %}
-      </div>
+      <button class="icon-button settings-button" id="open-preferences" type="button" aria-label="Settings" title="Settings">
+        <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true">
+          <path d="M10 3.5h4l.5 2.4 1.6.9 2.3-.8 2 3.5-1.8 1.6v1.8l1.8 1.6-2 3.5-2.3-.8-1.6.9-.5 2.4h-4l-.5-2.4-1.6-.9-2.3.8-2-3.5 1.8-1.6v-1.8L3.6 9.5l2-3.5 2.3.8 1.6-.9z"></path>
+          <circle cx="12" cy="12" r="3"></circle>
+        </svg>
+      </button>
     </div>
   </header>
 
-  <main class="flex-grow container mx-auto px-4 py-6 space-y-6">
+  <main class="shell main-content" id="main">
     {% block content %}{% endblock %}
   </main>
 
-  <footer class="text-center text-xs py-4 text-gray-500 dark:text-gray-400">
-    COPYRIGHT © 2025 ISLAMICTIMES.ORG. ALL RIGHTS RESERVED.
+  <footer class="site-footer">
+    <div class="shell footer-inner">
+      <a class="quiet-link small" href="{{ url_for('pages.methodology') }}"{% if request.endpoint == 'pages.methodology' %} aria-current="page"{% endif %}>Methodology</a>
+      <a class="icon-button" href="https://github.com/hassantahan/islamictimes-org" rel="noreferrer" aria-label="GitHub" title="GitHub">
+        <span class="github-mark" aria-hidden="true"></span>
+      </a>
+    </div>
   </footer>
 
-  <script type="module" src="{{ url_for('static', filename='js/shared/theme.js', v='20260228-4') }}"></script>
+  <dialog class="dialog" id="preferences" aria-labelledby="preferences-title">
+    <form method="dialog" class="dialog-heading">
+      <h2 id="preferences-title">Settings</h2>
+      <button class="icon-button dialog-close" type="submit" aria-label="Close settings">×</button>
+    </form>
+    {% block calculation_settings %}{% endblock %}
+    <div class="fields two-fields">
+      <label>Appearance
+        <select id="preference-theme"><option value="traditional">Traditional</option><option value="dark">Dark</option><option value="light">Light</option><option value="system">System</option></select>
+      </label>
+      <label>Time format
+        <select id="preference-clock"><option value="24">24-hour</option><option value="12">12-hour</option></select>
+      </label>
+    </div>
+    {% block display_settings %}{% endblock %}
+    <div class="privacy-box">
+      <label class="checkbox-label"><input type="checkbox" id="preferences-enabled"> Remember settings</label>
+      <p class="muted small">Saved in this browser.</p>
+      <button class="text-button" id="clear-preferences" type="button" hidden>Clear saved settings</button>
+      <p role="status" class="small preference-status" id="preference-status"></p>
+    </div>
+  </dialog>
+
   {% block scripts %}{% endblock %}
 </body>
 </html>

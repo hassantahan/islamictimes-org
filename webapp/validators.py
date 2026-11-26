@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 from datetime import datetime
+from math import isfinite
 
 from webapp.errors import ApiError
+
+PRAYER_ANGLE_FIELDS = ("fajr_angle", "maghrib_angle", "isha_angle")
 
 
 def require_json_object(payload: object) -> dict:
@@ -18,14 +21,28 @@ def parse_float(payload: dict, key: str, *, minimum: float | None = None, maximu
     value = payload.get(key)
     try:
         num = float(value)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         raise ApiError(f"Field '{key}' must be a number.") from None
 
+    if not isfinite(num):
+        raise ApiError(f"Field '{key}' must be a finite number.")
     if minimum is not None and num < minimum:
         raise ApiError(f"Field '{key}' must be >= {minimum}.")
     if maximum is not None and num > maximum:
         raise ApiError(f"Field '{key}' must be <= {maximum}.")
     return num
+
+
+def parse_prayer_angles(payload: dict) -> dict[str, float]:
+    angles = {}
+    for field in PRAYER_ANGLE_FIELDS:
+        if payload.get(field) in (None, ""):
+            continue
+        angle = parse_float(payload, field, maximum=90)
+        if angle <= 0:
+            raise ApiError(f"Field '{field}' must be greater than 0.")
+        angles[field] = angle
+    return angles
 
 
 def parse_int(payload: dict, key: str, *, minimum: int | None = None, maximum: int | None = None) -> int:
@@ -37,7 +54,6 @@ def parse_int(payload: dict, key: str, *, minimum: int | None = None, maximum: i
         num = int(value)
     except (TypeError, ValueError):
         raise ApiError(f"Field '{key}' must be an integer.") from None
-
     if minimum is not None and num < minimum:
         raise ApiError(f"Field '{key}' must be >= {minimum}.")
     if maximum is not None and num > maximum:
