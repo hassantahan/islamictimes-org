@@ -1,6 +1,6 @@
 # Islamic Times Web App
 
-Flask web app for prayer times, downloadable timetables, Qibla direction, and crescent visibility using the `islamic_times` Python package.
+Flask web app for prayer times, Qibla direction, and crescent visibility using the `islamic_times` Python package.
 
 ## Run locally
 
@@ -15,16 +15,18 @@ python app.py
 
 On Windows, activate the environment with `.venv\Scripts\Activate.ps1`. Open `http://localhost:5000`.
 
-Until v3.2.0 is published, install the v3.2.0 wheel for your platform or the source archive from the library worktree before running `pip install -r requirements.txt`. A source installation needs a C compiler. The Render Docker deployment resolves the library from PyPI.
+To run against an unpublished library release, install a candidate wheel for
+your platform or build from the source archive before installing the website
+requirements. A source installation needs a C compiler.
 
-## Prayer Calendar and privacy
+## Prayer Times and privacy
 
 - Choose a city, coordinates, or device location. Device location requires a browser permission prompt and a secure context.
-- Jaʿfarī (Leva Institute) is the default prayer calculation method. Choose Custom angles to override the Fajr, Maghrib, or Isha angles. Blank fields use the Jaʿfarī angle. A mosque profile holds its name, calculation method, optional custom angles, Asr convention, and signed minute offsets for the five daily prayers. A timetable can cover up to 366 days.
-- iCalendar includes the five daily prayer events. CSV also includes solar markers, a calculated Hijri date, local offsets, and estimated-time indicators.
-- The daily timetable updates when its date, location, or calculation settings change. Its date picker shows Gregorian and calculated Hijri days. With the Jaʿfarī or Tehran presets or Jaʿfarī-based custom angles, the daily ʿAṣr entry is Sayyid Sistani’s preferred window when available. Open a range for its ruling or use **About Faḍīlah** for an overview.
-- **Remember settings** is off by default. When enabled, browser storage holds appearance, clock format, the selected city, prayer settings, and profiles. Custom and device coordinates are used only for the current visit. Users can turn saving off or clear saved data from Settings.
-- The daily schedule defaults to Toronto. Its map loads OpenStreetMap with coordinates rounded to two decimal places and omits the referring page. The location picker offers a city, coordinates, or device location.
+- Jaʿfarī (Leva Institute) is the default prayer calculation method. Choose Custom angles to override the Fajr, Maghrib, or ʿIshāʾ angles. Blank fields use the Jaʿfarī angle.
+- The daily timetable updates when its date, location, or calculation settings change. The date picker pairs each Gregorian date with its calculated civil Hijri date. The Hijri date can differ from local crescent-sighting announcements.
+- The Jaʿfarī and Tehran presets show the preferred windows for ʿAṣr and ʿIshāʾ as their main entries when available. The timeline shows prayer periods and preferred windows. Open a range for timing details or visit **Methodology** for calculation rules and sources.
+- **Remember settings** is off by default. When enabled, browser storage holds appearance, clock format, the selected city, and prayer settings. Custom and device coordinates are used only for the current visit. Users can turn saving off or clear saved data from Settings.
+- The daily schedule defaults to Toronto. The map uses coordinates rounded to two decimal places. OpenStreetMap receives tile requests and the site's origin. The location picker offers a city, coordinates, or device location.
 - City search runs in the browser using a bundled [GeoNames index](static/data/CITIES-LICENSE.md).
 
 ## Application structure
@@ -36,14 +38,13 @@ Until v3.2.0 is published, install the v3.2.0 wheel for your platform or the sou
 
 - `GET /healthz`
 - `POST /prayer_times`
-- `POST /calendar/schedule`
-- `POST /calendar/export/ics`
-- `POST /calendar/export/csv`
+- `GET /hijri_month/<year>/<month>`
 - `GET /upcoming_hijri?date=YYYY-MM-DD`
 - `POST /vis_calc`
 - `GET /maps_index`
 
-The calendar endpoints read the same JSON object. Required keys are `lat`, `lon`, `start`, and `end`. Optional keys include `method`, `asr_type` (0 for standard, 1 for Hanafi), and `profile` with `name` and `offset_minutes`. With `method: "CUSTOM"`, an optional `angles` object accepts `fajr_angle`, `maghrib_angle`, and `isha_angle` in degrees below the horizon. The preview returns JSON and the downloads return attachments. `POST /generate_map` is retired because the site uses precomputed maps.
+`POST /generate_map` is retired because the site uses precomputed maps.
+Prayer Calendar routes are disabled in the public app.
 
 ### Tests
 
@@ -53,7 +54,10 @@ python -m unittest discover -s tests -p 'test_*.py'
 
 ### Deployment
 
-The existing Render deployment uses `render.yaml` and `Dockerfile`.
+The Render deployment builds from `main` using `render.yaml` and `Dockerfile`
+and installs the library from PyPI.
+Verify that the required `islamic_times` release is available on PyPI before
+merging a library dependency update into the deployment branch.
 
 - `MAPS_BASE` defaults to `https://islamictimes-maps.onrender.com`
 - `MAPS_INDEX_CACHE_TTL` defaults to 3600 seconds

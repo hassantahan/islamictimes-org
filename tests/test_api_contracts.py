@@ -30,6 +30,26 @@ class ApiContractTests(unittest.TestCase):
             with self.subTest(route=route):
                 self.assertEqual(self.client.get(route).status_code, 400)
 
+    def test_hijri_month_grid_and_timetable_include_the_hijri_leap_day(self):
+        month = self.client.get("/hijri_month/2026/6").get_json()
+        daily = self.client.post("/prayer_times", json={"lat": 43.65, "lon": -79.38, "date": "2026-06-16"})
+        self.assertEqual(daily.status_code, 200)
+        self.assertEqual(month[15], daily.get_json()["hijri"])
+        self.assertEqual((month[15]["year"], month[15]["month"], month[15]["day"]), (1447, 12, 30))
+        self.assertEqual((month[16]["year"], month[16]["month"], month[16]["day"]), (1448, 1, 1))
+
+    def test_cautions_describe_affected_prayers(self):
+        payload = {"lat": 69.65, "lon": 18.96, "date": "2026-06-21"}
+        makkah = self.client.post("/prayer_times", json={**payload, "method": {"name": "MAKKAH"}})
+        self.assertEqual(makkah.status_code, 200)
+        self.assertEqual(makkah.json["isha"]["caution"], {
+            "kind": "estimated", "detail": "90 min after estimated Maghrib.",
+        })
+        self.assertNotIn("caution", makkah.json["zuhr"])
+        jafari = self.client.post("/prayer_times", json=payload)
+        self.assertEqual(jafari.status_code, 200)
+        self.assertEqual(jafari.json["isha"]["caution"]["kind"], "unavailable")
+
     def test_prayer_times_missing_fields_returns_400(self):
         response = self.client.post("/prayer_times", json={})
         self.assertEqual(response.status_code, 400)
@@ -60,7 +80,7 @@ class ApiContractTests(unittest.TestCase):
         self.assertGreater(payload["qibla"]["distance_km"], 0.0)
         self.assertGreater(payload["qibla"]["distance_mi"], 0.0)
 
-    def test_shia_timetables_include_sistani_daylight_windows(self):
+    def test_shia_timetables_include_sistani_windows(self):
         coordinates = {"lat": 43.65, "lon": -79.38, "date": "2026-11-24"}
         for method in ("JAFARI", "TEHRAN", "CUSTOM"):
             with self.subTest(method=method):
@@ -68,14 +88,89 @@ class ApiContractTests(unittest.TestCase):
                     "/prayer_times", json={**coordinates, "method": {"name": method, "midnight_type": "preset"}},
                 )
                 self.assertEqual(response.status_code, 200)
-                windows = response.get_json()["fadilah"]
-                self.assertEqual(set(windows), {"zuhr", "asr"})
+                data = response.get_json()
+                windows = data["fadilah"]
+                self.assertEqual(set(windows), {"fajr", "zuhr", "asr", "maghrib", "isha"})
+                fajr = windows["fajr"]
+                self.assertEqual(fajr["end_sign"], "whole_horizon_lit")
+                self.assertTrue(fajr["estimated"])
+                start = datetime.fromisoformat(fajr["start"])
+                end = datetime.fromisoformat(fajr["end"])
+                sunrise = datetime.fromisoformat(data["sunrise"]["time"])
+                self.assertLess(start, end)
+                self.assertLess(end, sunrise)
+                self.assertEqual(data["method"]["western_redness_model"], "seasonal")
                 self.assertEqual(windows["zuhr"]["preferred_by"], windows["asr"]["start"])
                 self.assertEqual(windows["zuhr"]["end"], windows["asr"]["preferred_by"])
                 self.assertLess(datetime.fromisoformat(windows["asr"]["start"]),
                                 datetime.fromisoformat(windows["asr"]["end"]))
+                self.assertTrue(data["method"]["use_isha_fadilah"])
+                self.assertEqual(
+                    datetime.fromisoformat(data["isha"]["time"]).isoformat(timespec="seconds"),
+                    windows["isha"]["start"],
+                )
         response = self.client.post("/prayer_times", json={**coordinates, "method": {"name": "ISNA"}})
         self.assertNotIn("fadilah", response.get_json())
+
+    def test_local_fajr_end_and_experimental_evening_blend(self):
+        payload = {"lat": 43.65, "lon": -79.38, "date": "2026-11-26"}
+        baseline = self.client.post("/prayer_times", json=payload).get_json()
+        custom_start = {"name": "CUSTOM", "midnight_type": "preset", "fajr_angle": 18}
+        changed = self.client.post("/prayer_times", json={**payload, "method": custom_start}).get_json()
+        self.assertNotEqual(changed["fadilah"]["fajr"]["start"], baseline["fadilah"]["fajr"]["start"])
+        self.assertEqual(changed["fadilah"]["fajr"]["end"], baseline["fadilah"]["fajr"]["end"])
+        method = {"name": "JAFARI", "midnight_type": "preset",
+                  "western_redness_model": "blend", "fajr_fadilah_end_degrees": 10}
+        data = self.client.post("/prayer_times", json={**payload, "method": method}).get_json()
+        self.assertEqual(data["fajr"]["time"], baseline["fajr"]["time"])
+        self.assertTrue(data["fadilah"]["fajr"]["estimated"])
+        self.assertLess(data["fadilah"]["fajr"]["start"], data["fadilah"]["fajr"]["end"])
+        self.assertNotEqual(data["fadilah"]["fajr"]["end"], baseline["fadilah"]["fajr"]["end"])
+        self.assertEqual(data["fadilah"]["maghrib"]["end"], data["fadilah"]["isha"]["start"])
+        self.assertNotEqual(data["isha"]["time"], baseline["isha"]["time"])
+        for invalid in ({"western_redness_model": "unknown"}, {"fajr_fadilah_end_degrees": 16}):
+            response = self.client.post("/prayer_times", json={**payload, "method": {**method, **invalid}})
+            self.assertEqual(response.status_code, 400)
+
+    def test_evening_fadilah_shares_twilight_and_uses_elapsed_dawn_fraction(self):
+        method = {"name": "CUSTOM", "isha_angle": 18, "midnight_type": 0}
+        coordinates = {"lat": 43.65, "lon": -79.38}
+        first = self.client.post(
+            "/prayer_times", json={**coordinates, "date": "2026-03-07", "method": method},
+        ).get_json()
+        second = self.client.post(
+            "/prayer_times", json={**coordinates, "date": "2026-03-08", "method": method},
+        ).get_json()
+        maghrib, isha = first["fadilah"]["maghrib"], first["fadilah"]["isha"]
+        self.assertTrue(maghrib["estimated"])
+        self.assertTrue(isha["estimated"])
+        self.assertFalse(first["method"]["use_isha_fadilah"])
+        self.assertNotIn("preferred_by", isha)
+        self.assertEqual(maghrib["start"], datetime.fromisoformat(first["maghrib"]["time"]).isoformat(timespec="seconds"))
+        self.assertEqual(maghrib["end"], isha["start"])
+        self.assertLess(datetime.fromisoformat(isha["start"]), datetime.fromisoformat(first["isha"]["time"]))
+
+        sunset = datetime.fromisoformat(first["sunset"]["time"])
+        dawn = datetime.fromisoformat(second["fajr"]["time"])
+        self.assertNotEqual(sunset.utcoffset(), dawn.utcoffset())
+        self.assertAlmostEqual(
+            (datetime.fromisoformat(isha["end"]) - sunset).total_seconds(),
+            (dawn - sunset).total_seconds() / 3, delta=1,
+        )
+
+    def test_evening_fadilah_omits_unavailable_or_reversed_windows(self):
+        cases = (
+            {"lat": 69.65, "lon": 18.96, "date": "2026-06-21", "method": {"name": "JAFARI"}},
+            {"lat": 43.65, "lon": -79.38, "date": "2026-11-25",
+             "method": {"name": "CUSTOM", "maghrib_angle": 15}},
+        )
+        for payload in cases:
+            with self.subTest(payload=payload):
+                response = self.client.post("/prayer_times", json=payload)
+                self.assertEqual(response.status_code, 200)
+                windows = response.get_json()["fadilah"]
+                self.assertNotIn("maghrib", windows)
+                self.assertNotIn("isha", windows)
 
     def test_prayer_times_preset_method_honors_midnight_override(self):
         response = self.client.post(

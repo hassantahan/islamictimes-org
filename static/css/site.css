@@ -5,6 +5,13 @@
   font-weight: 400 700;
   font-display: swap;
 }
+@font-face {
+  font-family: "STIX Two Text";
+  src: url("../fonts/STIXTwoText-Italic.woff2") format("woff2");
+  font-style: italic;
+  font-weight: 400 700;
+  font-display: swap;
+}
 
 :root {
   color-scheme: dark;
@@ -23,8 +30,13 @@
   --band: light-dark(#e9eaeb, #26282a);
   --clock-ink: var(--ink);
   --clock-muted: var(--muted);
+  --active-prayer: light-dark(#e9edef, #30383b);
   --fadilah-band: light-dark(#e6edf4, #232f3c);
   --fadilah-ink: light-dark(#36526c, #b0c9e1);
+  --gauge-prayer: light-dark(#807c72, #94989c);
+  --gauge-preferred: light-dark(#496c85, #7bb2d9);
+  --gauge-preferred-overlap: light-dark(#29465c, #4e8fb9);
+  --gauge-now: light-dark(#a76a11, #f2c263);
   --accent: light-dark(#676d70, #b0b4b7);
   --measure: 68rem;
   --gutter: clamp(1rem, 4vw, 2.5rem);
@@ -49,8 +61,12 @@
   --band: #233f34;
   --clock-ink: #fff7e2;
   --clock-muted: #ead6a8;
-  --fadilah-band: #e4ebda;
+  --active-prayer: #ede8d6;
+  --fadilah-band: #dce8d5;
   --fadilah-ink: #3e664a;
+  --gauge-prayer: #807052;
+  --gauge-preferred: #477453;
+  --gauge-preferred-overlap: #23452d;
   --accent: #927139;
 }
 
@@ -91,7 +107,7 @@ h2 { font-size: clamp(1.22rem, 2.25vw, 1.45rem); line-height: 1.24; letter-spaci
 .skip-link { position: fixed; top: .5rem; left: .5rem; z-index: 10; padding: .6rem .8rem; transform: translateY(-200%); background: var(--surface); }
 .skip-link:focus { transform: none; }
 .site-footer { border-top: 1px solid var(--line); }
-.footer-inner { display: flex; align-items: center; justify-content: space-between; padding-block: .38rem; }
+.footer-inner { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-block: .38rem; }
 .github-mark { width: 1.15rem; height: 1.15rem; background: currentColor; mask: url("../img/icons/github.svg") center / contain no-repeat; }
 .quiet-link, .text-button { text-underline-offset: .22em; }
 
@@ -136,7 +152,14 @@ select {
 .day-dates { display: grid; gap: .15rem; font-size: 1rem; font-weight: 550; }
 #daily-hijri:empty { display: none; }
 .date-control { flex: none; }
-.date-dialog { max-width: 29rem; }
+.date-dialog {
+  /* Keep the month controls steady when the grid grows or shrinks. */
+  --date-dialog-top: max(1rem, calc(50% - 16rem));
+  inset-block: var(--date-dialog-top) auto;
+  margin-block: 0;
+  max-block-size: calc(100% - var(--date-dialog-top) - 1rem);
+  max-width: 29rem;
+}
 .date-month { display: flex; justify-content: space-between; align-items: center; gap: .25rem; }
 .date-month > button { font-size: 1.45rem; }
 .date-month > button:disabled { opacity: .36; }
@@ -153,65 +176,165 @@ select {
 .date-grid td button[aria-current="date"] { border-color: var(--control); }
 .date-hijri { color: var(--link); }
 .date-grid .date-hijri { font-size: .74rem; font-weight: 450; }
-.date-picker-footer { display: flex; justify-content: space-between; align-items: center; gap: .5rem; margin-top: .65rem; }
-.date-picker-actions { display: flex; gap: .5rem; }
-.date-picker-actions .button { min-width: 3.25rem; min-height: 2.25rem; }
-.prayer-sheet { background: var(--surface); border: 1px solid var(--line); border-top: 0; }
-.prayer-clock { display: flex; align-items: center; gap: clamp(1rem, 5vw, 3.4rem); min-height: 8rem; padding: clamp(.9rem, 2.2vw, 1.4rem) clamp(1rem, 3vw, 2rem); background: var(--band); color: var(--clock-ink); }
+.date-picker-footer { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: .5rem; margin-top: .65rem; }
+.date-picker-footer > .text-button { justify-self: start; }
+.date-picker-actions { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: .5rem; }
+.date-picker-actions .button { min-width: 4.4rem; min-height: 2.25rem; padding-block: .5rem .4rem; }
+.prayer-sheet { --prayer-inset: clamp(.65rem, 2vw, 1.5rem); background: var(--surface); border: 1px solid var(--line); border-top: 0; }
+.prayer-clock {
+  --clock-pad: clamp(1rem, 3vw, 2rem);
+  display: grid; align-items: center; min-height: 8rem; padding: clamp(.9rem, 2.2vw, 1.4rem) var(--clock-pad);
+  background: var(--band); color: var(--clock-ink);
+}
+.prayer-clock:has(.current-prayer:not([hidden])) { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.current-prayer:not([hidden]) + .next-prayer { padding-inline-start: var(--clock-pad); border-inline-start: 1px solid var(--control); }
 .clock-label { color: var(--clock-muted); font-size: .92rem; font-weight: 565; }
-.clock-copy h2 { font-size: clamp(1.55rem, 3.7vw, 2.55rem); font-weight: 570; }
-.clock-reading { position: relative; }
-.clock-time { font-size: clamp(2.9rem, 6.1vw, 5rem); font-weight: 475; line-height: .97; letter-spacing: -.05em; font-variant-numeric: lining-nums tabular-nums; }
-.clock-time.clock-range { font-size: clamp(1.6rem, 4.8vw, 3.9rem); letter-spacing: -.035em; }
+.clock-reading { display: flex; align-items: baseline; flex-wrap: wrap; gap: .15rem .55rem; }
+.clock-reading h2, .clock-time { font-size: clamp(1.4rem, 3.3vw, 2.15rem); }
+.clock-reading h2 { font-weight: 570; }
+.clock-time { font-weight: 475; line-height: 1.18; font-variant-numeric: lining-nums tabular-nums; }
+.clock-time.clock-countdown { color: var(--clock-muted); font-size: clamp(1.18rem, 2.6vw, 1.8rem); white-space: nowrap; }
 .clock-day { color: var(--clock-muted); }
-.current-prayer { min-width: 9rem; margin-inline-start: auto; padding-inline-start: clamp(.8rem, 3vw, 1.7rem); border-inline-start: 1px solid var(--control); }
-#current-prayer-name { font-size: 1.3rem; font-weight: 575; }
-.notice { padding: .55rem .8rem; background: var(--current); color: var(--ink); font-size: .9rem; }
-.prayer-timeline { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); padding: 0; margin: 0; list-style: none; font-variant-numeric: tabular-nums; }
-.prayer-timeline li { min-width: 0; display: grid; align-content: center; gap: .1rem; padding: .75rem clamp(.65rem, 2vw, 1.5rem); border-top: 3px solid transparent; }
-.prayer-timeline li + li { border-inline-start: 1px solid var(--line); }
+.current-prayer { min-width: 0; padding-inline-end: var(--clock-pad); }
+#current-prayer-name { font-size: clamp(1.5rem, 3.65vw, 2.75rem); font-weight: 575; line-height: 1.18; }
+.prayer-timeline { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); grid-template-rows: auto auto; padding: 0; margin: 0; list-style: none; font-variant-numeric: tabular-nums; }
+.prayer-timeline li { min-width: 0; display: grid; grid-row: span 2; grid-template-rows: subgrid; }
+.prayer-card { --prayer-time-size: clamp(1.05rem, 3.2vw, 1.95rem); min-width: 0; display: grid; align-content: start; gap: .1rem; padding: .75rem var(--prayer-inset); border-top: 3px solid transparent; border-bottom: 1px solid var(--line); }
+.prayer-timeline li + li .prayer-card { border-inline-start: 1px solid var(--line); }
 .prayer-name { color: var(--muted); font-size: .9rem; font-weight: 630; }
-.prayer-reading { display: flex; align-items: end; justify-content: space-between; flex-wrap: wrap; gap: .35rem .5rem; }
-.prayer-time { font-size: clamp(1.05rem, 3.2vw, 1.95rem); font-weight: 550; line-height: 1.15; white-space: nowrap; }
-.asr-preferred-label { margin-inline-start: .3rem; font-size: .75rem; font-weight: 500; }
-.prayer-time.asr-fallback { font-size: 1rem; }
+.prayer-reading { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: .35rem .5rem; }
+.prayer-time { font-size: var(--prayer-time-size); font-weight: 550; line-height: 1.15; white-space: nowrap; }
+.prayer-caution { display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; margin-inline-start: .25em; width: 1.35em; height: 1.35em; padding: 0; border: 0; background: transparent; color: var(--gauge-now); }
+.prayer-caution svg { width: 1em; height: 1em; }
+.prayer-preferred-label { margin-inline-start: .3rem; font-size: .75rem; font-weight: 500; font-style: normal; }
+.prayer-name, #hero-prayer, #current-prayer-name.has-prayer, #qibla-title,
+.gauge-note h3, [id^="fadilah-title-"] { font-style: italic; }
+.prayer-time.prayer-sequence { font-size: 1rem; }
 .fadilah-window { display: grid; margin-inline-start: auto; color: var(--muted); text-align: end; font-size: .76rem; }
-.fadilah-range { min-height: 1.5rem; padding: .1rem 0; border: 0; color: inherit; background: transparent; font-size: .86rem; font-weight: 570; white-space: nowrap; text-decoration: underline dotted; text-underline-offset: .22em; }
-.fadilah-range:hover, .fadilah-range[aria-expanded="true"] { color: var(--ink); text-decoration-style: solid; }
-.fadilah-window.asr-window { margin-inline-start: 0; color: var(--ink); }
-.asr-window .fadilah-range { padding-block: 0; font-size: clamp(1rem, 2.05vw, 1.62rem); font-weight: 550; line-height: 1.15; text-align: start; text-decoration-thickness: 1px; white-space: normal; }
-.fadilah-tile { position: fixed; inset: auto; overflow: auto; width: min(17.5rem, calc(100% - 1.5rem)); margin: 0; padding: .75rem .9rem; border: 1px solid var(--line); border-radius: .45rem; background: var(--surface); box-shadow: 0 5px 22px #0002; color: var(--ink); text-align: start; font-size: .91rem; }
-.fadilah-tile h3 { font-size: 1.15rem; }
-.fadilah-tile p { margin-top: .55rem; }
-.fadilah-conditions { display: grid; gap: .2rem; margin-top: .45rem; padding-block: .4rem; border-block: 1px solid var(--line); }
+:is(.fadilah-range, .midnight-note-trigger) { padding: 0; border: 0; color: inherit; background: transparent; white-space: nowrap; text-decoration: underline dotted; text-underline-offset: .22em; }
+:is(.fadilah-range, .midnight-note-trigger):is(:hover, [aria-expanded="true"]) { color: var(--ink); text-decoration-style: solid; }
+.fadilah-range { min-height: 1.5rem; padding: .1rem 0; font-size: .86rem; font-weight: 570; }
+.evening-window .fadilah-range { white-space: normal; text-align: end; }
+.fadilah-window.primary-window { margin-inline-start: 0; color: var(--ink); }
+.primary-window .fadilah-range { padding-block: 0; font-size: clamp(1rem, 2.05vw, 1.62rem); font-weight: 550; line-height: 1.15; text-align: start; text-decoration-thickness: 1px; white-space: normal; text-wrap: balance; }
+@media (width > 42rem) {
+  .prayer-reading:has(.primary-window) { display: block; font-size: var(--prayer-time-size); line-height: 1.15; }
+  .prayer-reading .primary-window { display: inline-grid; vertical-align: baseline; max-width: 100%; }
+  .primary-window .fadilah-range { min-height: 0; }
+}
+.timetable-note { position: fixed; inset: auto; overflow: auto; width: min(17.5rem, calc(100% - 1.5rem)); margin: 0; padding: .75rem .9rem; border: 1px solid var(--line); border-radius: .45rem; background: var(--surface); box-shadow: 0 5px 22px #0002; color: var(--ink); text-align: start; font-size: .91rem; font-weight: 400; }
+.timetable-note h3 { font-size: 1.15rem; }
+.timetable-note p { margin-top: .3rem; text-wrap: balance; }
+.fadilah-conditions { display: grid; gap: .2rem; margin-top: .45rem; padding-top: .4rem; border-top: 1px solid var(--line); }
 .fadilah-conditions > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: .6rem; }
 .fadilah-conditions dt { color: var(--muted); }
 .fadilah-conditions dd { text-align: end; font-weight: 590; font-variant-numeric: lining-nums tabular-nums; }
-.prayer-timeline .next-row { background: var(--current); border-top-color: var(--accent); }
-.prayer-timeline .next-row .prayer-name { color: var(--ink); }
-.prayer-timeline .in-fadilah { background: var(--fadilah-band); border-top-color: var(--fadilah-ink); }
+.prayer-timeline .next-row .prayer-card { border-top-color: var(--accent); }
+.prayer-timeline .current-row .prayer-card { background: var(--active-prayer); border-top-color: var(--control); }
+.prayer-timeline :is(.current-row, .next-row) .prayer-name { color: var(--ink); }
+.prayer-timeline .in-fadilah .prayer-card { background: var(--fadilah-band); border-top-color: var(--fadilah-ink); }
 .prayer-timeline .in-fadilah .fadilah-window { color: var(--fadilah-ink); }
-.prayer-sheet-footer { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: .25rem 1rem; border-top: 1px solid var(--line); padding: .6rem clamp(.65rem, 2vw, 1.5rem); }
-.methodology { max-width: 45rem; margin-inline: auto; }
-.methodology section + section { margin-top: 1.75rem; padding-top: 1.2rem; border-top: 1px solid var(--line); }
-.methodology h3 { margin-top: 1rem; font-size: 1.05rem; }
-.methodology p { margin-top: .45rem; }
-.methodology .table-scroll { margin-block: .75rem; }
+.prayer-timeline .from-gauge .prayer-card { box-shadow: inset 0 0 0 2px var(--link); }
+.prayer-gauge { padding: .78rem clamp(.65rem, 2vw, 1.5rem) .48rem; border-top: 1px solid var(--line); }
+.gauge-track { position: relative; height: 5px; background: var(--line); border-radius: 2px; }
+.gauge-band { position: absolute; inset-block: -.55rem; padding: 0; border: 0; background: transparent; }
+.gauge-band::before { content: ""; position: absolute; inset: .55rem 0; background: var(--gauge-band-color); }
+.gauge-period { --gauge-band-color: var(--gauge-prayer); }
+.gauge-preferred { z-index: 1; --gauge-band-color: var(--gauge-preferred); }
+.gauge-preferred-overlap { z-index: 2; --gauge-band-color: var(--gauge-preferred-overlap); }
+.gauge-band:is(:hover, :focus-visible, .is-highlighted)::before { inset-block: .38rem; box-shadow: 0 0 0 1px var(--surface), 0 0 0 2px var(--link); }
+.timetable-note.gauge-note { width: min(14rem, calc(100% - 1.5rem)); }
+.gauge-note p { font-variant-numeric: tabular-nums; }
+.gauge-tick, .gauge-now, .gauge-preferred-start { position: absolute; transform: translateX(-50%); }
+.gauge-preferred-start { z-index: 2; width: 1.25rem; --gauge-band-color: var(--gauge-preferred); }
+.gauge-preferred-start::before, .gauge-preferred-start:is(:hover, :focus-visible, .is-highlighted)::before { inset: calc(50% - 3.5px) auto auto calc(50% - 3.5px); width: 7px; height: 7px; border-radius: 50%; }
+.gauge-tick { z-index: 3; inset-block: -2px; width: 1px; background: var(--ink); pointer-events: none; }
+.gauge-preferred-tick { inset-block: 0; background: var(--surface); }
+.gauge-now { z-index: 4; inset-block: -5px; width: 4px; border-radius: 2px; background: var(--gauge-now); box-shadow: 0 0 0 1px var(--surface); pointer-events: none; }
+.gauge-labels { display: flex; justify-content: space-between; gap: .25rem; margin-top: .33rem; font-size: .78rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.next-day { position: relative; inset-block-start: -.42em; margin-inline-start: .14em; font-size: .72em; line-height: 0; vertical-align: baseline; }
+.methodology-heading { display: block; }
+.methodology-heading p { margin-top: .55rem; color: var(--muted); font-size: 1.15rem; }
+.methodology-layout { display: grid; grid-template-columns: minmax(10rem, 13rem) minmax(0, 46rem); gap: clamp(1.4rem, 5vw, 4rem); align-items: start; border-top: 1px solid var(--line); padding-top: var(--section-space); }
+.methodology-nav { position: sticky; top: 1.5rem; align-self: start; }
+.methodology-nav > p { font-weight: 620; }
+.methodology-nav ul { display: grid; gap: .42rem; padding-inline-start: .85rem; margin: .55rem 0 0; border-inline-start: 1px solid var(--line); list-style: none; font-size: .94rem; }
+.methodology-nav a { color: var(--link); text-decoration: none; }
+.methodology-nav a:hover, .methodology-nav a:focus-visible { text-decoration: underline; text-underline-offset: .2em; }
+.methodology { min-width: 0; line-height: 1.56; }
+.methodology section { scroll-margin-block-start: 1.25rem; }
+.methodology section + section { margin-top: clamp(1.65rem, 4vw, 2.85rem); padding-top: clamp(1.35rem, 3vw, 2rem); border-top: 1px solid var(--line); }
+.methodology h2 { font-size: clamp(1.6rem, 3vw, 2.03rem); }
+.methodology h3 { margin-top: 1.1rem; font-size: 1.15rem; line-height: 1.25; }
+.methodology p { margin-top: .55rem; text-wrap: pretty; }
+.methodology-glossary { display: grid; gap: .85rem; margin-top: .85rem; }
+.methodology-glossary dt { font-weight: 630; }
+.methodology-glossary dd { margin-top: .12rem; }
+.sun-figure {
+  container-type: inline-size;
+  margin-top: 1rem; padding: .9rem 1rem; background: var(--surface); border: 1px solid var(--line);
+}
+.sun-snapshots {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem .8rem;
+  margin: 0; padding: 0; list-style: none; text-align: center;
+}
+@container (min-width: 33rem) {
+  .sun-snapshots { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+.sun-snapshots svg { display: block; width: 100%; margin-bottom: .5rem; }
+.sun-snapshots svg :is(path, circle) { stroke-linecap: round; stroke-linejoin: round; }
+.sun-snapshots strong, .sun-snapshots span { display: block; line-height: 1.3; }
+.sun-snapshots strong { font-weight: 620; }
+.sun-snapshots span { margin-top: .12rem; color: var(--muted); font-size: .85rem; }
+.sun-ground { fill: var(--current); opacity: .52; }
+.sun-horizon { fill: none; stroke: var(--control); }
+.sun-sightline, .sun-angle, .sun-motion { fill: none; stroke: var(--link); }
+.sun-angle, .sun-motion { stroke-width: 1.5; }
+.sun-disc { fill: var(--current); stroke: var(--accent); stroke-width: 1.6; }
+.sun-disc.below-horizon { stroke-dasharray: 2 2.8; }
+.sun-observer { fill: var(--ink); }
+.methodology .methodology-sources { display: flex; flex-wrap: wrap; gap: .2rem 1rem; margin-top: .8rem; font-size: .86rem; }
+.methodology-sources a { color: var(--link); text-underline-offset: .2em; }
+.methodology .table-scroll { max-height: none; margin-block: .85rem; }
 .methodology-table { width: 100%; border-collapse: collapse; text-align: start; background: var(--surface); }
-.methodology-table :is(th, td) { padding: .5rem .65rem; text-align: start; border-bottom: 1px solid var(--line); }
+.methodology-table :is(th, td) { padding: .55rem .7rem; text-align: start; vertical-align: top; border-bottom: 1px solid var(--line); }
 .methodology-table thead { background: var(--current); }
 .methodology-table tbody tr:last-child > * { border-bottom: 0; }
-.solar-strip { display: flex; flex-wrap: wrap; gap: .15rem 1.6rem; color: var(--muted); font-size: .875rem; }
-.solar-strip div { display: flex; align-items: baseline; gap: .38rem; }
-.solar-strip dd { color: var(--ink); font-variant-numeric: tabular-nums; font-weight: 600; }
-#daily-status:not(:empty) { flex-basis: 100%; margin-top: .4rem; }
+.methodology-table th[scope="row"] { font-weight: 585; }
+.preset-table { min-width: 39rem; font-size: .92rem; line-height: 1.35; }
+.preset-table td { white-space: nowrap; }
+.preset-table tbody + tbody tr:first-child > * { border-top: 1px solid var(--control); }
+.method-default { color: var(--muted); font-size: .8em; font-weight: 450; white-space: nowrap; }
+.shadow-figure {
+  --noon-shadow: light-dark(#898780, #777982);
+  --shadow-growth: light-dark(#4e4c48, #aeb0b7);
+  max-width: 34rem; margin-block: 1rem 1.15rem; padding: .9rem 1rem .8rem; background: var(--surface); border: 1px solid var(--line);
+}
+.shadow-chart { display: grid; gap: .4rem; margin-top: .65rem; font-size: .9rem; }
+.shadow-chart > div { display: grid; grid-template-columns: 4.45rem minmax(0, 1fr); gap: .45rem; align-items: center; }
+.shadow-chart dd { display: grid; grid-template-columns: minmax(0, 1fr) 2.5rem; align-items: center; gap: .5rem; font-variant-numeric: tabular-nums; }
+.shadow-bar { display: flex; height: .56rem; }
+.shadow-bar::before { content: ""; width: 16.667%; background: var(--noon-shadow); }
+.shadow-bar.standard::after, .shadow-bar.hanafi::after { content: ""; width: 41.667%; background: var(--shadow-growth); }
+.shadow-bar.hanafi::after { width: 83.333%; }
+.shadow-key { display: flex; flex-wrap: wrap; gap: .25rem .9rem; color: var(--muted); font-size: .83rem; }
+.shadow-key span::before { content: ""; display: inline-block; width: .56rem; height: .56rem; margin-inline-end: .32rem; background: var(--noon-shadow); }
+.shadow-key span:nth-child(2)::before { background: var(--shadow-growth); }
+.solar-landmark { display: flex; flex-wrap: wrap; align-items: baseline; align-content: start; column-gap: .38rem; padding: .55rem var(--prayer-inset); color: var(--muted); font-size: .875rem; }
+.prayer-timeline li + li .solar-landmark { border-inline-start: 1px solid transparent; }
+.solar-landmark-end { justify-content: end; }
+.solar-landmark dd { color: var(--ink); font-weight: 600; }
+.midnight-note-trigger { font: inherit; font-variant-numeric: inherit; }
+.midnight-note-trigger:disabled { text-decoration: none; }
+#daily-status:not(:empty) { border-top: 1px solid var(--line); padding: .5rem var(--prayer-inset); }
 .daily-tools, .forecast-grid { display: grid; gap: var(--section-space); align-items: start; margin-top: var(--section-space); }
 .daily-tools { grid-template-columns: minmax(0, 1fr) minmax(0, 25rem) minmax(0, 1fr); align-items: center; gap: 1.25rem; border-top: 1px solid var(--line); padding-top: 1.25rem; }
 .forecast-grid { grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); }
 .local-visibility { display: grid; align-content: start; gap: .65rem; }
-.daily-location-panel { min-width: 0; justify-self: center; }
-.location-button { display: flex; align-items: center; gap: .52rem; min-height: 2.3rem; padding: 0; color: var(--ink); background: transparent; border: 0; font-weight: 575; text-align: left; }
-.location-button svg { color: var(--link); }
+.daily-location-panel { min-width: 0; padding-inline: clamp(.2rem, 2vw, 1.25rem); }
+.location-button { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: .52rem; max-width: 100%; min-height: 3rem; padding: .33rem 0 0; color: var(--ink); background: transparent; border: 0; font-weight: 575; line-height: 1.25; text-align: start; }
+.location-button span { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
+.location-button svg { color: var(--link); margin-top: .12em; }
 .location-button:hover { color: var(--link); }
 .location-map { width: min(100%, 25rem); justify-self: center; text-align: center; }
 .qibla-section { display: flex; align-items: center; justify-self: center; gap: clamp(.6rem, 2vw, 1.5rem); }
@@ -224,9 +347,8 @@ select {
 .dial-west { left: .35rem; top: 50%; transform: translateY(-50%); }
 .qibla-needle { position: absolute; inset: 0; transform: rotate(var(--bearing, 0deg)); }
 .qibla-needle::before, .qibla-needle::after { content: ""; position: absolute; left: 50%; width: 14%; height: 28%; transform: translateX(-50%); }
-.qibla-needle::before { top: 22%; background: var(--accent); clip-path: polygon(50% 0, 100% 100%, 0 100%); }
-.qibla-needle::after { top: 50%; background: var(--control); clip-path: polygon(0 0, 100% 0, 50% 100%); }
-.location-map a { display: inline-block; margin-top: .4rem; }
+.qibla-needle::before { top: 22%; background: var(--link); clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+.qibla-needle::after { top: 50%; background: color-mix(in srgb, var(--control) 52%, var(--surface)); clip-path: polygon(0 0, 100% 0, 50% 100%); }
 .location-map iframe { display: block; width: 100%; height: 13.5rem; border: 1px solid var(--line); border-radius: .4rem; background: var(--field-fill); filter: saturate(.65); }
 
 .calendar-controls { padding: clamp(.8rem, 2vw, 1.4rem); background: var(--surface); border-block: 1px solid var(--line); }
@@ -264,10 +386,24 @@ select {
 .dialog-close { font-size: 1.35rem; line-height: 1; }
 .calculation-settings { display: grid; gap: .4rem; border-bottom: 1px solid var(--line); padding-bottom: .75rem; margin-bottom: .85rem; }
 .location-dialog .status:not(:empty) { margin-top: .55rem; }
+.location-dialog:has(.city-results:not([hidden]), .city-search .status:not(:empty)) { overflow: visible; }
+.location-dialog .city-results, .location-dialog .city-search .status:not(:empty) {
+  position: absolute;
+  z-index: 1;
+  inset: 100% 0 auto;
+  margin: .25rem 0 0;
+  background: var(--surface);
+  box-shadow: 0 6px 16px #0002;
+}
+.location-dialog .city-results { max-height: min(13rem, 38dvh); }
+.location-dialog .city-search .status:not(:empty) { padding: .4rem .55rem; border: 1px solid var(--control); border-radius: .35rem; }
+.location-actions { display: flex; justify-content: end; margin-top: .8rem; }
+.location-actions .button { min-width: 3.25rem; min-height: 2.25rem; }
 .privacy-box { border-top: 1px solid var(--line); padding-top: .9rem; margin-top: 1rem; }
 .privacy-box p { margin: .35rem 0; }
 .checkbox-label { grid-template-columns: auto 1fr; align-items: center; gap: .5rem; color: var(--ink); }
 .checkbox-label input { width: 1.1rem; height: 1.1rem; accent-color: var(--action); }
+.timeline-setting { margin-top: .75rem; }
 
 @media (max-width: 48rem) {
   .header-inner { grid-template-columns: 1fr auto; gap: .2rem .65rem; padding-top: .55rem; }
@@ -277,33 +413,37 @@ select {
   .calendar-inputs > button { margin-top: 0; width: fit-content; grid-column: 1 / -1; }
   .daily-tools { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem .55rem; }
   .location-map { grid-column: 1 / -1; grid-row: 2; }
+  .methodology-layout { grid-template-columns: minmax(0, 1fr); }
+  .methodology-nav { position: static; }
+  .methodology-nav ul { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: .65rem; }
 }
 @media (max-width: 42rem) {
   .scroll-hint { display: block; }
   .calendar-methods, .forecast-grid { grid-template-columns: minmax(0, 1fr); }
   .offset-fields { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .prayer-timeline { grid-template-columns: 1fr; }
-  .prayer-timeline li { display: grid; grid-template-columns: 1.1fr 1fr minmax(5.6rem, 1fr); align-items: center; min-height: 2.85rem; padding: .4rem .72rem; border-top: 0; border-inline-start: 3px solid transparent; }
-  .prayer-timeline li + li { border-inline-start: 3px solid transparent; border-top: 1px solid var(--line); }
-  .prayer-timeline li.next-row { border-inline-start-color: var(--accent); border-top-color: var(--line); }
-  .prayer-timeline li.in-fadilah { border-inline-start-color: var(--fadilah-ink); border-top-color: var(--line); }
-  .prayer-time { font-size: 1.2rem; }
-  .fadilah-window.asr-window { grid-column: 2 / -1; justify-self: start; }
-  .asr-window .fadilah-range { font-size: 1.15rem; }
+  .prayer-sheet { --prayer-inset: .72rem; }
+  .prayer-timeline { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; }
+  .prayer-timeline li { grid-row: auto; grid-template-rows: none; }
+  .prayer-card { --prayer-time-size: 1.2rem; grid-template-columns: 1.1fr 1fr minmax(5.6rem, 1fr); align-content: center; align-items: center; min-height: 2.85rem; padding-block: .4rem; border-block: 0; border-inline-start: 3px solid transparent; }
+  .prayer-timeline li + li .prayer-card { border-inline-start: 3px solid transparent; border-top: 1px solid var(--line); }
+  .prayer-timeline .next-row .prayer-card { border-inline-start-color: var(--accent); border-top-color: var(--line); }
+  .prayer-timeline .current-row .prayer-card { border-inline-start-color: var(--control); border-top-color: var(--line); }
+  .prayer-timeline .in-fadilah .prayer-card { border-inline-start-color: var(--fadilah-ink); border-top-color: var(--line); }
+  .solar-landmark, .prayer-timeline li + li .solar-landmark { padding-block: .1rem .5rem; border-inline-start: 3px solid transparent; }
+  .fadilah-window.primary-window { grid-column: 2 / -1; justify-self: start; }
+  .primary-window .fadilah-range { font-size: 1.15rem; }
   .prayer-reading { display: contents; }
 }
 @media (max-width: 36rem) {
   .daily-date-group { justify-content: space-between; width: 100%; }
-  .prayer-clock { min-height: 8rem; flex-wrap: wrap; padding-block: .85rem; gap: .65rem 1.25rem; }
-  .clock-time { font-size: clamp(2.65rem, 10.9vw, 4.2rem); }
-  .current-prayer { display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; flex-basis: 100%; margin-inline-start: 0; padding: .45rem 0 0; border-inline-start: 0; border-top: 1px solid var(--control); }
-  #current-prayer-name { font-size: 1.08rem; }
+  .prayer-clock:has(.current-prayer:not([hidden])) { grid-template-columns: minmax(0, 1fr); gap: .65rem; }
+  .current-prayer:not([hidden]) + .next-prayer { padding: .65rem 0 0; border-inline-start: 0; border-top: 1px solid var(--control); }
   .qibla-dial { width: 3.45rem; }
   .qibla-angle { font-size: 1.08rem; }
-  .solar-strip { column-gap: .7rem; }
   .map-fields { width: 100%; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
 }
 @media (max-width: 23rem) {
   .wordmark { font-size: 1.12rem; gap: .4rem; }
   .site-nav { gap: .65rem; font-size: .85rem; }
+  .prayer-card { grid-template-columns: 1fr .95fr minmax(6.65rem, 1.15fr); }
 }

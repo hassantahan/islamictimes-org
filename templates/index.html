@@ -24,59 +24,78 @@
 
 <section class="prayer-sheet" aria-label="Daily prayer times">
   <div class="prayer-clock" id="prayer-clock">
-    <div class="clock-copy">
-      <p class="clock-label" id="hero-label">Next prayer</p>
-      <h2 id="hero-prayer">—</h2>
-    </div>
-    <div class="clock-reading">
-      <p class="clock-time" id="hero-time">—</p>
-      <p class="clock-day small" id="hero-day" hidden>Tomorrow</p>
-    </div>
     <div class="current-prayer" id="current-prayer" hidden>
       <p class="clock-label" id="current-prayer-label">Current prayer</p>
       <p id="current-prayer-name">—</p>
     </div>
+    <div class="next-prayer">
+      <p class="clock-label" id="hero-label">Next prayer</p>
+      <div class="clock-reading">
+        <h2 id="hero-prayer">—</h2>
+        <p class="clock-time" id="hero-time"></p>
+      </div>
+      <p class="clock-day small" id="hero-day" hidden></p>
+    </div>
   </div>
 
-  <p class="notice" id="daily-warning" hidden>Some times are estimated or unavailable.</p>
   <ul class="prayer-timeline" id="daily-timeline" role="list" aria-label="Daily schedule" aria-busy="false">
-    {% for key, label in [('fajr', 'Fajr'), ('zuhr', 'Ẓuhr'), ('asr', 'ʿAṣr'), ('maghrib', 'Maghrib'), ('isha', 'ʿIshāʾ')] %}
+    {% for key, label, landmark, landmark_label in [
+      ('fajr', 'Fajr', 'sunrise', 'Sunrise'),
+      ('zuhr', 'Ẓuhr', none, none),
+      ('asr', 'ʿAṣr', none, none),
+      ('maghrib', 'Maghrib', 'sunset', 'Sunset'),
+      ('isha', 'ʿIshāʾ', 'midnight', 'Midnight'),
+    ] %}
     <li data-prayer-row="{{ key }}">
-      <span class="prayer-name">{{ label }}{% if key == "asr" %} <span class="asr-preferred-label" id="asr-preferred-label" hidden>Preferred</span>{% endif %}</span>
-      <div class="prayer-reading">
-        <strong class="prayer-time" id="time-{{ key }}">—</strong>
-        {% if key in ("zuhr", "asr") %}
-        <div class="fadilah-window{% if key == 'asr' %} asr-window{% endif %}" id="fadilah-{{ key }}" hidden>
-          <button class="fadilah-range" type="button" popovertarget="fadilah-note-{{ key }}" aria-expanded="false"></button>
-          <div class="fadilah-tile" id="fadilah-note-{{ key }}" popover aria-label="{{ label }} faḍīlah">
-            <h3>{{ label }}</h3>
-            <dl class="fadilah-conditions">
-              <div><dt>Preferred window</dt><dd data-fadilah-note-range></dd></div>
-              <div><dt>Aim to pray by</dt><dd data-fadilah-preferred></dd></div>
-            </dl>
-            {% if key == "asr" %}
-            <p>Measure how much an upright object’s shadow grows after solar noon. The window opens at 2/7 of the object’s height and ends at 6/7. Praying by 4/7 is preferred.</p>
-            <p>You may pray ʿAṣr as soon as you finish Ẓuhr.</p>
-            {% else %}
-            <p>The window starts at solar noon. It ends when an upright object’s shadow has grown by 4/7 of the object’s height. Praying by 2/7 is preferred.</p>
-            {% endif %}
+      <div class="prayer-card">
+        <span class="prayer-name">{{ label }}<span class="visually-hidden" data-prayer-state></span>{% if key in ("asr", "isha") %} <span class="prayer-preferred-label" id="{{ key }}-preferred-label" hidden>Preferred</span>{% endif %}</span>
+        <div class="prayer-reading">
+          <strong class="prayer-time" id="time-{{ key }}">—</strong>
+          {% set evening = key in ('maghrib', 'isha') %}
+          <div class="fadilah-window{% if evening %} evening-window{% endif %}" id="fadilah-{{ key }}" hidden>
+            <button class="fadilah-range" type="button" popovertarget="fadilah-note-{{ key }}" aria-expanded="false"></button>
+            <div class="timetable-note" id="fadilah-note-{{ key }}" popover aria-labelledby="fadilah-title-{{ key }}">
+              <h3 id="fadilah-title-{{ key }}">{{ label }} Faḍīlah</h3>
+              <dl class="fadilah-conditions">
+                <div{% if key == 'fajr' %} data-fajr-note-window{% endif %}><dt>{{ 'Estimated window' if evening or key == 'fajr' else 'Preferred window' }}</dt><dd data-fadilah-note-range></dd></div>
+                {% if key == 'fajr' %}
+                <div data-fajr-note-opening hidden><dt>Starts</dt><dd data-fajr-start></dd></div>
+                {% elif not evening %}
+                <div><dt>Aim to pray by</dt><dd data-fadilah-preferred></dd></div>
+                {% endif %}
+              </dl>
+            </div>
           </div>
         </div>
-        {% endif %}
       </div>
+      {% if landmark %}
+      <dl class="solar-landmark{% if landmark == 'midnight' %} solar-landmark-end{% endif %}">
+        <dt{% if landmark == 'midnight' %} id="midnight-label"{% endif %}>{{ landmark_label }}</dt>
+        <dd>
+          {% if landmark == 'midnight' %}
+          <button class="midnight-note-trigger" id="open-midnight-note" type="button" popovertarget="midnight-note" aria-labelledby="midnight-label time-midnight" aria-expanded="false" disabled><span id="time-midnight">—</span></button>
+          <div class="timetable-note" id="midnight-note" popover aria-labelledby="midnight-note-title">
+            <h3 id="midnight-note-title">Islamic midnight</h3>
+            <p>Halfway from sunset to the next <span id="midnight-note-end"></span>.</p>
+          </div>
+          {% else %}
+          <span id="time-{{ landmark }}">—</span>
+          {% endif %}
+        </dd>
+      </dl>
+      {% endif %}
     </li>
     {% endfor %}
   </ul>
 
-  <div class="prayer-sheet-footer">
-    <dl class="solar-strip">
-      {% for key, label in [('sunrise', 'Sunrise'), ('sunset', 'Sunset'), ('midnight', 'Midnight')] %}
-      <div><dt>{{ label }}</dt><dd id="time-{{ key }}">—</dd></div>
-      {% endfor %}
-    </dl>
-    <a class="quiet-link small" id="fadilah-methodology" href="{{ url_for('pages.methodology') }}#fadilah" hidden>About Faḍīlah</a>
-    <p id="daily-status" class="small status" role="status"></p>
+  <div class="prayer-gauge" id="prayer-gauge" role="group" hidden>
+    <div class="gauge-track">
+      <div class="gauge-periods"></div>
+      <span class="gauge-now"></span>
+    </div>
+    <div class="gauge-labels" aria-hidden="true"></div>
   </div>
+  <p id="daily-status" class="small status" role="status"></p>
 </section>
 
 <div class="daily-tools">
@@ -91,9 +110,8 @@
   </section>
 
   <div class="location-map">
-    <iframe id="daily-map-frame" title="Approximate location on OpenStreetMap" referrerpolicy="no-referrer" credentialless hidden></iframe>
+    <iframe id="daily-map-frame" title="Location and Qibla direction on OpenStreetMap" referrerpolicy="no-referrer" credentialless hidden></iframe>
     <p class="muted small" id="map-notice" hidden>Map unavailable at this latitude.</p>
-    <a id="daily-map-link" class="quiet-link small" target="_blank" rel="noopener noreferrer" aria-label="Open in OpenStreetMap" hidden>Open map</a>
   </div>
 
   <section class="qibla-section" aria-labelledby="qibla-title">
@@ -115,10 +133,15 @@
     <h2 id="location-dialog-title">Location</h2>
     <button class="icon-button dialog-close" type="submit" aria-label="Close location">×</button>
   </form>
-  <div class="location-fields" id="daily-location">
-    {{ location_fields(map_link=false) }}
-  </div>
-  <p class="small status" id="location-error" role="status"></p>
+  <form id="daily-location-form" novalidate>
+    <div class="location-fields" id="daily-location">
+      {{ location_fields(map_link=false) }}
+    </div>
+    <p class="small status" id="location-error" role="status"></p>
+    <div class="location-actions">
+      <button class="button button-primary" type="submit" id="location-apply">OK</button>
+    </div>
+  </form>
 </dialog>
 
 <dialog class="dialog date-dialog" id="date-dialog" aria-label="Choose date">
@@ -149,7 +172,7 @@
 
 {% block calculation_settings %}
 <section class="calculation-settings" id="daily-calculation" aria-label="Calculation">
-  <label>Method <select id="daily-method">{{ method_options(custom=true) }}</select></label>
+  <label>Method <select id="daily-method">{{ method_options(prayer_presets, custom=true) }}</select></label>
   <details class="coordinate-fields" id="daily-advanced">
     <summary>Options</summary>
     <div class="fields two-fields">
@@ -158,10 +181,24 @@
         <option value="">Method default</option><option value="0">Sunset to sunrise</option><option value="1">Sunset to Fajr</option>
       </select></label>
       {{ angle_fields() }}
+      <label id="evening-model-option" hidden>Evening twilight
+        <select id="evening-model">
+          <option value="seasonal">Seasonal</option>
+          <option value="blend">Seasonal + 14° (experimental)</option>
+          <option value="solar_descent">Solar descent (experimental)</option>
+        </select>
+      </label>
+      <label id="fajr-end-option" hidden>Local <i>Fajr</i> preferred end (°)
+        <input id="fajr-end-angle" type="number" min="0" max="90" step="any" placeholder="Default estimate">
+      </label>
     </div>
   </details>
   <p class="small status" id="calculation-error" role="status"></p>
 </section>
+{% endblock %}
+
+{% block display_settings %}
+<label class="checkbox-label timeline-setting"><input type="checkbox" id="preference-timeline"> Show prayer timeline</label>
 {% endblock %}
 
 {% block scripts %}

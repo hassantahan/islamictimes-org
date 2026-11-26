@@ -1,51 +1,67 @@
-import { rememberCity, setMapLink, setupLocation } from "./shared/location.js";
+import { rememberCity, setupLocation } from "./shared/location.js";
 import { setupDatePicker } from "./shared/date-picker.js";
-import { getPreferences, updatePreferences } from "./shared/preferences.js";
-import { apiResponse, applySelect, civilDate, formatTime, localISO, PRAYERS, setupCustomAngles, SHIA_PRESETS, shiftDate } from "./shared/timetable.js";
+import { highlightDayGauge, renderDayGauge } from "./shared/day-gauge.js";
+import { onBackdropClick } from "./shared/dialog.js";
+import { getPreferences, onSettingsApply, updatePreferences } from "./shared/preferences.js";
+import { apiResponse, applySelect, civilDate, formatRange, formatTime, localISO, nextDayMarker, PRAYERS, setupCustomAngles, setupTimetableNote, SHIA_PRESETS, shiftDate } from "./shared/timetable.js";
 
 const byId = (id) => document.getElementById(id);
 const locationControls = byId("daily-location");
 const locationDialog = byId("location-dialog");
+const locationForm = byId("daily-location-form");
+const settingsDialog = byId("preferences");
 const locationFields = setupLocation(locationControls, "toronto");
 const calculation = byId("daily-calculation");
 const dateButton = byId("open-date-picker");
 const method = byId("daily-method");
 const asr = byId("daily-asr");
 const midnight = byId("daily-midnight");
+const eveningModel = byId("evening-model");
+const fajrEnd = byId("fajr-end-angle");
 const angles = setupCustomAngles(method, byId("custom-angles"));
 const status = byId("daily-status");
 const timeline = byId("daily-timeline");
+const gauge = byId("prayer-gauge");
 const prayerRows = [...timeline.querySelectorAll("[data-prayer-row]")];
 const solarLabels = { sunrise: "Sunrise", sunset: "Sunset", midnight: "Midnight" };
 const mapFrame = byId("daily-map-frame");
-const mapLink = byId("daily-map-link");
-const fadilahMethodology = byId("fadilah-methodology");
 const prayerCutoffs = { fajr: "sunrise", zuhr: "sunset", asr: "sunset", maghrib: "midnight", isha: "midnight" };
 
 let location = locationFields.read();
 let result;
-let displayedLocation = location;
 let selectedDate;
-let saveSelections = false;
-let locationTimer;
 let calculationTimer;
+let countdownTimer;
 const adjacentDays = new Map();
 let activeRequest;
+
+function syncCalculationOptions() {
+  const shiaPreset = SHIA_PRESETS.has(method.value);
+  byId("daily-asr-option").hidden = shiaPreset;
+  byId("evening-model-option").hidden = !shiaPreset;
+  byId("fajr-end-option").hidden = !shiaPreset;
+  return shiaPreset;
+}
 
 function applySettings(settings) {
   applySelect(method, settings?.name || method.options[0].value);
   applySelect(asr, settings?.asr_type ?? 0);
   applySelect(midnight, settings?.midnight_type === "preset" ? "" : settings?.midnight_type ?? "");
   angles.apply(settings);
+  applySelect(eveningModel, settings?.western_redness_model ?? "seasonal");
+  fajrEnd.value = location.city && settings?.fajrEndCity === location.city ? settings.fajr_fadilah_end_degrees ?? "" : "";
+  syncCalculationOptions();
 }
 
 function readSettings() {
-  const shiaPreset = SHIA_PRESETS.has(method.value);
-  byId("daily-asr-option").hidden = shiaPreset;
+  const shiaPreset = syncCalculationOptions();
+  if (shiaPreset && !fajrEnd.reportValidity()) throw new Error("Check the local Fajr end angle.");
   const settings = {
     name: method.value,
     asr_type: shiaPreset ? undefined : Number(asr.value),
     midnight_type: midnight.value === "" ? "preset" : Number(midnight.value),
+    western_redness_model: shiaPreset ? eveningModel.value : undefined,
+    fajr_fadilah_end_degrees: shiaPreset && fajrEnd.value !== "" ? fajrEnd.valueAsNumber : undefined,
   };
   return { ...settings, ...angles.read() };
 }
@@ -53,16 +69,15 @@ function readSettings() {
 let appliedSettings = getPreferences().daily;
 applySettings(appliedSettings);
 appliedSettings = readSettings();
-let displayedSettings = appliedSettings;
 
-function getDaily(forDate, signal) {
+function getDaily(forDate, signal, place = location, settings = appliedSettings) {
   return apiResponse("/prayer_times", {
-    lat: location.lat, lon: location.lon, date: forDate, method: appliedSettings,
+    lat: place.lat, lon: place.lon, date: forDate, method: settings,
   }, signal).then((response) => response.json());
 }
 
 function loadAdjacentDay(date) {
-  if (adjacentDays.has(date) || displayedLocation !== location || displayedSettings !== appliedSettings) return;
+  if (adjacentDays.has(date)) return;
   const shown = result;
   const signal = activeRequest.signal;
   adjacentDays.set(date, null);
@@ -78,38 +93,51 @@ function loadAdjacentDay(date) {
 function candidates(day) {
   if (!day) return [];
   const sharedAfternoon = Object.hasOwn(day, "fadilah");
+  const sharedEvening = day.method.use_isha_fadilah;
   return Object.entries(PRAYERS)
     .map(([key, label]) => {
-      const preferredWindow = sharedAfternoon && key === "asr" ? day.fadilah.asr : null;
-      const time = sharedAfternoon && key === "asr" ? preferredWindow?.start : day[key]?.time;
+      const prefersWindow = (sharedAfternoon && key === "asr") || (sharedEvening && key === "isha");
+      const preferredWindow = prefersWindow ? day.fadilah[key] : null;
+      const time = prefersWindow ? preferredWindow?.start : day[key]?.time;
       return {
         key, label, time, date: day.date, preferredWindow,
         when: Date.parse(time), ends: Date.parse(day[prayerCutoffs[key]]?.time),
-        shared: sharedAfternoon && key === "zuhr",
+        sharedWith: sharedAfternoon && key === "zuhr" ? "asr" : sharedEvening && key === "maghrib" ? "isha" : null,
       };
     })
     .filter(({ when }) => Number.isFinite(when));
 }
 
-function formatRange({ start, end }) {
-  const first = formatTime(start);
-  const last = formatTime(end);
-  const suffix = last.match(/ (AM|PM)$/)?.[0];
-  return (suffix && first.endsWith(suffix) ? first.slice(0, -suffix.length) : first) + "–" + last;
+function renderCountdown(upcoming, now) {
+  const remaining = upcoming.when - now;
+  const seconds = Math.ceil(remaining / 1000);
+  const minutes = Math.ceil(remaining / 60000);
+  const hours = Math.floor(minutes / 60);
+  const parts = [];
+  if (hours) parts.push(hours + "h");
+  if (minutes % 60) parts.push(minutes % 60 + "m");
+  byId("hero-time").textContent = "in " + (seconds < 60 ? seconds + "s" : parts.join(" "));
+
+  // Refresh at the next visible countdown change or prayer boundary.
+  const delay = remaining <= 60000 ? remaining % 1000 || 1000 : remaining % 60000 || 60000;
+  countdownTimer = setTimeout(() => {
+    const nextNow = Date.now();
+    if (nextNow < upcoming.when) renderCountdown(upcoming, nextNow);
+    else renderHero();
+  }, delay);
 }
 
 function renderHero() {
   if (!result) return;
+  clearTimeout(countdownTimer);
   const today = localISO(new Date(), result.timezone);
   const isToday = result.date === today;
   const now = Date.now();
   const prayers = candidates(result).sort((left, right) => left.when - right.when);
-  const yesterday = isToday ? shiftDate(today, -1) : null;
+  const previousDate = shiftDate(result.date, -1);
   const tomorrow = isToday ? shiftDate(today, 1) : null;
-  const schedule = isToday
-    ? [...candidates(adjacentDays.get(yesterday)), ...prayers, ...candidates(adjacentDays.get(tomorrow))]
-      .sort((left, right) => left.when - right.when)
-    : prayers;
+  const schedule = [...candidates(adjacentDays.get(previousDate)), ...prayers, ...candidates(adjacentDays.get(tomorrow))]
+    .sort((left, right) => left.when - right.when);
   const upcoming = isToday ? schedule.find(({ when }) => when > now) : prayers.find(({ preferredWindow }) => !preferredWindow);
   const started = isToday ? schedule.findLast(({ when, preferredWindow }) => when <= now && !preferredWindow) : null;
   const current = started && !(started.ends <= now) ? started : null;
@@ -118,28 +146,52 @@ function renderHero() {
   byId("hero-label").textContent = nextWindow ? "Next preferred window" : isToday ? "Next prayer" : "First prayer";
   byId("hero-prayer").textContent = upcoming?.label ?? "—";
   const heroTime = byId("hero-time");
-  heroTime.classList.toggle("clock-range", !!nextWindow);
-  heroTime.textContent = nextWindow ? formatRange(nextWindow) : formatTime(upcoming?.time);
-  byId("hero-day").hidden = !isToday || !upcoming || upcoming.time.slice(0, 10) <= today;
+  const exactTime = nextWindow
+    ? (nextWindow.estimated ? "≈ " : "") + formatRange(nextWindow)
+    : formatTime(upcoming?.time);
+  const showCountdown = isToday && !!upcoming;
+  const heroDay = byId("hero-day");
+  heroTime.classList.toggle("clock-countdown", showCountdown);
+  if (showCountdown) {
+    heroTime.title = exactTime;
+    renderCountdown(upcoming, now);
+  } else {
+    heroTime.removeAttribute("title");
+    heroTime.textContent = upcoming ? exactTime : "";
+  }
+  heroDay.hidden = !showCountdown || upcoming.time.slice(0, 10) <= today;
+  if (!heroDay.hidden) heroDay.textContent = "Tomorrow · " + exactTime;
   byId("current-prayer").hidden = !isToday;
-  byId("current-prayer-label").textContent = current?.shared ? "Current prayers" : "Current prayer";
-  byId("current-prayer-name").textContent = current?.shared ? "Ẓuhr / ʿAṣr" : current?.label ?? "Between prayers";
+  byId("current-prayer-label").textContent = current?.sharedWith ? "Current prayers" : "Current prayer";
+  const currentName = current?.sharedWith
+    ? current.label + " & " + PRAYERS[current.sharedWith]
+    : current?.label ?? "Between prayers";
+  byId("current-prayer-name").textContent = currentName;
+  byId("current-prayer-name").classList.toggle("has-prayer", !!current);
   for (const row of prayerRows) {
     const key = row.dataset.prayerRow;
     const range = result.fadilah?.[key];
+    const active = current?.date === result.date && (key === current.key || key === current.sharedWith);
+    const preferred = isToday && range && (active || range.estimated) && Date.parse(range.start) <= now && now < Date.parse(range.end);
+    row.classList.toggle("current-row", active);
+    row.querySelector("[data-prayer-state]").textContent = preferred
+      ? (range.estimated ? ", estimated preferred time now" : ", preferred time now")
+      : active ? ", current prayer" : "";
     row.classList.toggle("next-row", isToday && key === upcoming?.key && result.date === upcoming.date);
-    row.classList.toggle("in-fadilah", !!(isToday && range && Date.parse(range.start) <= now && now < Date.parse(range.end)));
+    row.classList.toggle("in-fadilah", !!preferred);
   }
 
-  if (isToday) {
-    if (!prayers.some(({ when, preferredWindow }) => when <= now && !preferredWindow)) loadAdjacentDay(yesterday);
-    if (!upcoming) loadAdjacentDay(tomorrow);
+  const showTimeline = getPreferences().showTimeline;
+  gauge.hidden = !showTimeline;
+  if (showTimeline) {
+    renderDayGauge(gauge, result.date, result.timezone, isToday ? now : null, schedule, currentName, result.fadilah);
   }
+  if (showTimeline || (isToday && !started)) loadAdjacentDay(previousDate);
+  if (isToday && !upcoming) loadAdjacentDay(tomorrow);
 }
 
 function renderFadilah(windows) {
-  fadilahMethodology.hidden = !Object.keys(windows ?? {}).length;
-  for (const key of ["zuhr", "asr"]) {
+  for (const key of Object.keys(PRAYERS)) {
     const time = windows?.[key];
     const windowLabel = byId("fadilah-" + key);
     windowLabel.hidden = !time;
@@ -149,43 +201,94 @@ function renderFadilah(windows) {
     }
 
     const button = windowLabel.querySelector(".fadilah-range");
-    const range = formatRange(time);
-    button.textContent = range;
-    button.setAttribute("aria-label", PRAYERS[key] + " preferred window, " + button.textContent);
+    const range = time.end ? formatRange(time) : "";
+    button.textContent = range ? (time.estimated ? "≈ " : "") + range : "Preferred";
+    const label = time.estimated ? " estimated preferred window, " : " preferred window, ";
+    button.setAttribute("aria-label", PRAYERS[key] + (range ? label + range : " preferred time"));
     windowLabel.querySelector("[data-fadilah-note-range]").textContent = range;
-    windowLabel.querySelector("[data-fadilah-preferred]").textContent = formatTime(time.preferred_by);
+    if (key === "fajr") {
+      windowLabel.querySelector("[data-fajr-note-window]").hidden = !range;
+      windowLabel.querySelector("[data-fajr-note-opening]").hidden = !!range;
+      windowLabel.querySelector("[data-fajr-start]").textContent = formatTime(time.start);
+    }
+    const preferredBy = windowLabel.querySelector("[data-fadilah-preferred]");
+    if (preferredBy) preferredBy.textContent = formatTime(time.preferred_by);
+  }
+}
+
+function renderPrimaryWindow(key, enabled, after) {
+  const time = byId("time-" + key);
+  const showWindow = enabled && !!result.fadilah?.[key];
+  time.hidden = showWindow;
+  time.classList.toggle("prayer-sequence", enabled);
+  byId(key + "-preferred-label").hidden = !showWindow;
+  byId("fadilah-" + key).classList.toggle("primary-window", showWindow);
+  if (enabled && !showWindow) {
+    time.textContent = "—";
+    if (Number.isFinite(Date.parse(result[after]?.time))) {
+      const prayer = document.createElement("i");
+      prayer.textContent = PRAYERS[after];
+      time.replaceChildren("After ", prayer);
+    }
   }
 }
 
 function renderMap() {
-  const lat = Number(displayedLocation.lat.toFixed(2));
+  const lat = Number(location.lat.toFixed(2));
   const outOfBounds = Math.abs(lat) > 85;
   byId("map-notice").hidden = !outOfBounds;
   if (outOfBounds) {
     if (mapFrame.hasAttribute("src")) mapFrame.removeAttribute("src");
     mapFrame.hidden = true;
-    mapLink.hidden = true;
     return;
   }
 
-  const lon = Number(displayedLocation.lon.toFixed(2));
-  const bbox = [
-    Math.max(-180, lon - 0.05), Math.max(-85, lat - 0.03),
-    Math.min(180, lon + 0.05), Math.min(85, lat + 0.03),
-  ];
-  const url = new URL("https://www.openstreetmap.org/export/embed.html");
-  url.search = new URLSearchParams({
-    bbox: bbox.map((coordinate) => coordinate.toFixed(2)).join(","),
-    layer: "mapnik",
-    marker: lat + "," + lon,
-  }).toString();
+  const lon = Number(location.lon.toFixed(2));
+  const url = new URL("../location-map.html", import.meta.url);
+  url.hash = new URLSearchParams({ lat, lon, bearing: result.qibla.angle_decimal }).toString();
   mapFrame.hidden = false;
-  if (mapFrame.src !== url.href) {
-    // The embed fits its map to the frame dimensions during initialization.
-    mapFrame.getBoundingClientRect();
-    mapFrame.src = url.href;
+  if (mapFrame.src !== url.href) mapFrame.src = url.href;
+}
+
+function renderCaution(key, caution) {
+  let button = byId("caution-" + key);
+  let note = byId("caution-note-" + key);
+  if (!caution) {
+    if (button) {
+      button.hidden = true;
+      note.hidePopover();
+    }
+    return;
   }
-  setMapLink(mapLink, { lat, lon });
+
+  const label = PRAYERS[key] ?? solarLabels[key];
+  if (!button) {
+    const value = byId("time-" + key);
+    const card = value.closest(".prayer-card");
+    const anchor = card ? card.querySelector(".prayer-name") : value.closest("dd");
+    button = document.createElement("button");
+    button.id = "caution-" + key;
+    button.className = "prayer-caution";
+    button.type = "button";
+    button.setAttribute("popovertarget", "caution-note-" + key);
+    button.setAttribute("aria-expanded", "false");
+    button.innerHTML = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 2.5 18 17H2Z M10 7.5v4 M10 14h.01"/></svg>';
+    note = document.createElement("div");
+    note.id = "caution-note-" + key;
+    note.className = "timetable-note";
+    note.setAttribute("popover", "auto");
+    const title = document.createElement("h3");
+    title.id = "caution-title-" + key;
+    note.setAttribute("aria-labelledby", title.id);
+    note.append(title, document.createElement("p"));
+    anchor.append(button);
+    (card ?? anchor).append(note);
+    setupTimetableNote(button, note, { keepClear: gauge });
+  }
+  button.hidden = false;
+  button.setAttribute("aria-label", label + ": " + caution.kind);
+  note.querySelector("h3").textContent = caution.kind === "estimated" ? "Estimated time" : "Time unavailable";
+  note.querySelector("p").textContent = caution.detail;
 }
 
 function renderDaily() {
@@ -195,22 +298,30 @@ function renderDaily() {
   gregorian.dateTime = result.date;
   gregorian.textContent = civilDate(result.date, { weekday: "long" }) + ", " +
     civilDate(result.date, { month: "long", day: "numeric", year: "numeric" });
-  byId("daily-heading-location").textContent = displayedLocation.label;
+  byId("daily-heading-location").textContent = location.label;
+  byId("open-location").title = location.label;
   const hijri = result.hijri;
-  byId("daily-hijri").textContent = hijri.day + " " + hijri.month_name + " " + hijri.year + " AH";
+  const month = document.createElement("i");
+  month.textContent = hijri.month_name;
+  byId("daily-hijri").replaceChildren(hijri.day + " ", month, " " + hijri.year + " AH");
   for (const key of Object.keys({ ...PRAYERS, ...solarLabels })) {
     const time = result[key]?.time;
-    const nextDay = formatTime(time) !== "—" && time.slice(0, 10) > result.date;
-    byId("time-" + key).textContent = formatTime(time) + (nextDay ? " (+1d)" : "");
+    const value = byId("time-" + key);
+    const reading = formatTime(time);
+    value.textContent = reading;
+    if (reading !== "—" && time.slice(0, 10) > result.date) value.append(nextDayMarker());
+    renderCaution(key, result[key]?.caution);
   }
-  const sharedAfternoon = Object.hasOwn(result, "fadilah");
-  const asrTime = byId("time-asr");
-  const asrWindow = result.fadilah?.asr;
-  asrTime.hidden = !!asrWindow;
-  asrTime.classList.toggle("asr-fallback", sharedAfternoon);
-  byId("asr-preferred-label").hidden = !asrWindow;
-  if (sharedAfternoon) asrTime.textContent = Number.isFinite(Date.parse(result.zuhr?.time)) ? "After Ẓuhr" : "—";
-  byId("daily-warning").hidden = !result.warnings.length;
+  const midnightEnd = byId("midnight-note-end");
+  midnightEnd.textContent = "sunrise";
+  if (result.method.midnight_type === 1) {
+    const fajr = document.createElement("i");
+    fajr.textContent = PRAYERS.fajr;
+    midnightEnd.replaceChildren(fajr);
+  }
+  byId("open-midnight-note").disabled = false;
+  renderPrimaryWindow("asr", Object.hasOwn(result, "fadilah"), "zuhr");
+  renderPrimaryWindow("isha", result.method.use_isha_fadilah, "maghrib");
   byId("qibla-angle").textContent = result.qibla.angle_decimal.toFixed(1) + "° " + result.qibla.cardinal;
   byId("qibla-distance").textContent = Math.round(result.qibla.distance_km).toLocaleString() + " km";
   byId("qibla-needle").style.setProperty("--bearing", result.qibla.angle_decimal + "deg");
@@ -219,131 +330,137 @@ function renderDaily() {
   renderHero();
 }
 
-async function refresh() {
+async function refresh({ place = location, settings = appliedSettings, date = selectedDate, save = false, dialog, errorStatus } = {}) {
   activeRequest?.abort();
   const request = new AbortController();
   activeRequest = request;
+  const abort = () => request.abort();
+  dialog?.addEventListener("close", abort, { once: true });
   timeline.setAttribute("aria-busy", "true");
   status.textContent = "Updating…";
   try {
-    const data = await getDaily(selectedDate, request.signal);
-    if (request.signal.aborted) return;
+    const data = await getDaily(date, request.signal, place, settings);
+    if (request.signal.aborted || (dialog && !dialog.open)) return false;
     adjacentDays.clear();
+    location = place;
+    appliedSettings = settings;
+    selectedDate = date;
     result = data;
-    displayedLocation = location;
-    displayedSettings = appliedSettings;
-    if (saveSelections) {
-      saveSelections = false;
+    if (save) {
       rememberCity(location);
-      updatePreferences({ daily: appliedSettings });
+      const daily = { ...appliedSettings };
+      if (daily.fajr_fadilah_end_degrees !== undefined) {
+        if (location.city) daily.fajrEndCity = location.city;
+        else delete daily.fajr_fadilah_end_degrees;
+      }
+      updatePreferences({ daily });
     }
     renderDaily();
     status.textContent = "";
+    return true;
   } catch (error) {
-    if (!request.signal.aborted) status.textContent = error.message;
+    if (!request.signal.aborted) {
+      status.textContent = errorStatus ? "" : error.message;
+      if (errorStatus) errorStatus.textContent = error.message;
+    }
+    return false;
   } finally {
-    if (!request.signal.aborted) timeline.setAttribute("aria-busy", "false");
+    dialog?.removeEventListener("close", abort);
+    if (activeRequest === request) {
+      timeline.setAttribute("aria-busy", "false");
+      if (request.signal.aborted || (dialog && !dialog.open)) status.textContent = "";
+    }
   }
 }
 
-function updateLocation() {
+async function updateLocation(event) {
+  event.preventDefault();
+  if (locationForm.inert) return;
   const errorStatus = byId("location-error");
+  errorStatus.textContent = "";
   try {
-    const newLocation = locationFields.read();
-    errorStatus.textContent = "";
-    const unchanged = newLocation.lat === location.lat && newLocation.lon === location.lon && newLocation.label === location.label;
-    if (unchanged && (location === displayedLocation || timeline.getAttribute("aria-busy") === "true")) {
+    const place = locationFields.read();
+    const moved = place.lat !== location.lat || place.lon !== location.lon;
+    if (!moved && place.label === location.label && result) {
+      locationDialog.close();
       return;
     }
-    location = newLocation;
-    saveSelections = true;
-    refresh();
+    const settings = moved ? { ...appliedSettings, fajr_fadilah_end_degrees: undefined } : appliedSettings;
+    locationForm.inert = true;
+    if (!await refresh({ place, settings, save: true, dialog: locationDialog, errorStatus })) return;
+    if (moved) fajrEnd.value = "";
+    locationDialog.close();
   } catch (error) {
     errorStatus.textContent = error.message;
+  } finally {
+    locationForm.inert = false;
   }
 }
 
 function updateCalculation() {
   const errorStatus = byId("calculation-error");
+  errorStatus.textContent = "";
   try {
     const settings = readSettings();
-    errorStatus.textContent = "";
     const unchanged = JSON.stringify(settings) === JSON.stringify(appliedSettings);
-    if (unchanged && (appliedSettings === displayedSettings || timeline.getAttribute("aria-busy") === "true")) return;
-    appliedSettings = settings;
-    saveSelections = true;
-    refresh();
+    if (unchanged && result && timeline.getAttribute("aria-busy") === "false") return true;
+    return refresh({ settings, save: true, dialog: settingsDialog, errorStatus });
   } catch (error) {
     errorStatus.textContent = error.message;
+    return false;
   }
 }
 
-const datePicker = setupDatePicker((date) => {
+const datePicker = setupDatePicker((date, dialog, errorStatus) => {
   const today = localISO(new Date(), result.timezone);
-  selectedDate = date === today ? undefined : date;
-  refresh();
+  return date === result.date || refresh({ date: date === today ? null : date, dialog, errorStatus });
 });
 dateButton.addEventListener("click", () => datePicker.open(result.date, localISO(new Date(), result.timezone)));
 
-for (const button of timeline.querySelectorAll("[popovertarget]")) {
-  const tile = byId(button.getAttribute("popovertarget"));
-  let hideTimer;
-  let pinned = false;
-  const isOpen = () => tile.matches(":popover-open");
-  const keepOpen = () => clearTimeout(hideTimer);
-  const hideOnLeave = () => {
-    keepOpen();
-    if (!pinned) hideTimer = setTimeout(() => tile.hidePopover(), 200);
-  };
-  button.addEventListener("pointerenter", (event) => {
-    if (event.pointerType !== "mouse") return;
-    keepOpen();
-    if (!isOpen()) tile.showPopover({ source: button });
-  });
-  button.addEventListener("pointerleave", hideOnLeave);
-  tile.addEventListener("pointerenter", keepOpen);
-  tile.addEventListener("pointerleave", hideOnLeave);
-  button.addEventListener("click", (event) => {
-    event.preventDefault();
-    keepOpen();
-    pinned = !pinned;
-    if (!pinned) tile.hidePopover();
-    else if (!isOpen()) tile.showPopover({ source: button });
-  });
-  tile.addEventListener("toggle", () => {
-    button.setAttribute("aria-expanded", String(isOpen()));
-    if (!isOpen()) pinned = false;
-  });
-  tile.addEventListener("beforetoggle", (event) => {
-    if (event.newState !== "open") return;
-    const rect = button.closest(".fadilah-window").getBoundingClientRect();
-    const rem = parseFloat(getComputedStyle(document.documentElement).fontSize);
-    const edge = .75 * rem;
-    const tileWidth = Math.min(17.5 * rem, innerWidth - 2 * edge);
-    tile.style.left = Math.max(edge, Math.min(rect.right - tileWidth, innerWidth - tileWidth - edge)) + "px";
-    const below = innerHeight - rect.bottom;
-    const placeBelow = below >= 12 * rem || below >= rect.top;
-    tile.style.maxHeight = (placeBelow ? below - 8 - edge : rect.top - 8 - edge) + "px";
-    tile.style.insetBlock = placeBelow
-      ? (rect.bottom + 8) + "px auto"
-      : "auto " + (innerHeight - rect.top + 8) + "px";
+for (const button of timeline.closest(".prayer-sheet").querySelectorAll("[popovertarget]")) {
+  setupTimetableNote(button, byId(button.getAttribute("popovertarget")), { keepClear: gauge });
+}
+for (const row of prayerRows) {
+  const card = row.querySelector(".prayer-card");
+  const highlight = () => highlightDayGauge(gauge, row.dataset.prayerRow);
+  const clear = () => highlightDayGauge(gauge, "");
+  card.addEventListener("pointerenter", (event) => { if (event.pointerType === "mouse") highlight(); });
+  card.addEventListener("pointerleave", () => { if (!card.querySelector(":focus-visible")) clear(); });
+  card.addEventListener("focusin", (event) => { if (event.target.matches(":focus-visible")) highlight(); });
+  card.addEventListener("focusout", (event) => {
+    if (!card.contains(event.relatedTarget) && !card.matches(":hover")) clear();
   });
 }
 
+function highlightPrayerCards(target) {
+  const keys = target?.closest(".gauge-band")?.dataset.prayers.split(" ") ?? [];
+  for (const row of prayerRows) row.classList.toggle("from-gauge", keys.includes(row.dataset.prayerRow));
+}
+gauge.addEventListener("pointerover", (event) => {
+  if (event.pointerType === "mouse") highlightPrayerCards(event.target);
+});
+gauge.addEventListener("pointerleave", () => highlightPrayerCards(gauge.querySelector(".gauge-band:focus-visible")));
+gauge.addEventListener("focusin", (event) => {
+  if (event.target.matches(":focus-visible")) highlightPrayerCards(event.target);
+});
+gauge.addEventListener("focusout", (event) => highlightPrayerCards(event.relatedTarget));
+
 byId("open-location").addEventListener("click", () => {
+  locationFields.setLocation(location);
+  byId("location-error").textContent = "";
   locationDialog.showModal();
   const citySearch = locationControls.querySelector("[data-city]");
   citySearch.focus();
   citySearch.select();
 });
-locationControls.addEventListener("locationchange", ({ detail }) => {
-  clearTimeout(locationTimer);
-  if (detail.coordinates) {
-    locationTimer = setTimeout(updateLocation, 300);
-  } else {
-    updateLocation();
-  }
+locationControls.addEventListener("input", () => {
+  byId("location-error").textContent = "";
 });
+locationControls.addEventListener("locationchange", () => {
+  byId("location-error").textContent = "";
+});
+locationForm.addEventListener("submit", updateLocation);
+onBackdropClick(locationDialog, () => locationForm.requestSubmit());
 calculation.addEventListener("input", (event) => {
   if (!event.target.matches("[data-prayer-angle]")) return;
   clearTimeout(calculationTimer);
@@ -353,8 +470,18 @@ calculation.addEventListener("change", () => {
   clearTimeout(calculationTimer);
   updateCalculation();
 });
+onSettingsApply(() => {
+  clearTimeout(calculationTimer);
+  return updateCalculation();
+});
+settingsDialog.addEventListener("close", () => {
+  clearTimeout(calculationTimer);
+  applySettings(appliedSettings);
+  fajrEnd.value = appliedSettings.fajr_fadilah_end_degrees ?? "";
+});
 document.addEventListener("preferenceschange", ({ detail }) => {
   if (detail.keys.includes("clock")) renderDaily();
+  else if (detail.keys.includes("showTimeline")) renderHero();
 });
 setInterval(() => {
   const isStale = result && result.date !== localISO(new Date(), result.timezone);

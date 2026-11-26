@@ -6,7 +6,7 @@ from datetime import datetime, time
 from zoneinfo import ZoneInfo
 
 from islamic_times.islamic_times import ITLocation
-from islamic_times.it_dataclasses import DistanceUnits
+from islamic_times.it_dataclasses import DistanceUnits, Prayer, PrayerTimes
 from timezonefinder import TimezoneFinder
 
 from webapp.config import DEFAULT_PRAYER_METHOD
@@ -32,6 +32,57 @@ def _format_prayer(prayer) -> dict[str, str]:
         tstr = str(t)
     return {"name": prayer.name, "time": tstr}
 
+
+_UNAVAILABLE_DETAILS = {
+    "fajr": "The Sun does not reach the dawn angle.",
+    "sunrise": "No usable sunrise on this date.",
+    "zuhr": "Local solar noon could not be calculated.",
+    "asr": "No usable local shadow timing.",
+    "sunset": "No usable sunset on this date.",
+    "maghrib": "No usable sunset or evening twilight crossing.",
+    "isha": "No usable evening twilight crossing or Maghrib time.",
+    "midnight": "Needs sunset and the next dawn or sunrise.",
+}
+
+
+def _estimated_detail(key: str, prayer: Prayer, times: PrayerTimes) -> str:
+    method = prayer.method
+    if key == "midnight":
+        return "Midpoint of sunset and the next dawn or sunrise."
+    if key == "isha" and method.isha_offset_minutes is not None:
+        # Use the applied interval, which may differ during Ramaḍān.
+        minutes = round((prayer.when.timestamp() - times.maghrib.when.timestamp()) / 60)
+        return f"{minutes} min after estimated Maghrib."
+    offset_maghrib = method.maghrib_offset_minutes is not None or method.isha_offset_minutes is not None
+    if key == "maghrib" and offset_maghrib and method.maghrib_angle.decimal == 0 and times.sunset.fallback_rule:
+        minutes = round((prayer.when.timestamp() - times.sunset.when.timestamp()) / 60)
+        if minutes == 0:
+            return "Uses the estimated sunset."
+        if minutes > 0:
+            return f"{minutes} min after estimated sunset."
+    if key in {"asr", "sunrise", "sunset"} or prayer.fallback_rule == "NEARESTLAT":
+        return "Calculated at a reference latitude."
+    if key != "fajr" and (times.sunrise.fallback_rule or times.sunset.fallback_rule):
+        # Polar dates can use either reference twilight itself or a portion of the reference night.
+        return "Uses Sun times at a reference latitude."
+    side = "before sunrise" if key == "fajr" else "after sunset"
+    if prayer.fallback_rule == "ANGLEBASED":
+        angle = getattr(method, key + "_angle").decimal
+        detail = f"{angle:g}/60 of the night"
+    else:
+        detail = {"MIDDLENIGHT": "Half the night", "ONESEVENTH": "One-seventh of the night"}[prayer.fallback_rule]
+    return f"{detail} {side}."
+
+
+def _prayer_caution(key: str, prayer: Prayer, times: PrayerTimes) -> dict[str, str] | None:
+    if prayer.status == "unavailable":
+        detail = _UNAVAILABLE_DETAILS[key]
+        if key == "isha" and prayer.method.use_isha_fadilah:
+            detail = "No usable local window for preferred ʿIshāʾ."
+        return {"kind": "unavailable", "detail": detail}
+    if prayer.fallback_rule:
+        return {"kind": "estimated", "detail": _estimated_detail(key, prayer, times)}
+    return None
 
 
 def _optional_binary_int(value, field_name: str, default: int | None = 0) -> int | None:
@@ -126,6 +177,10 @@ def _build_itlocation(payload: dict) -> ITLocation:
         # User override should apply regardless of preset/custom method path.
         if midnight_type is not None:
             loc.set_midnight_type(midnight_type)
+        if "western_redness_model" in method_payload:
+            loc.set_western_redness_model(method_payload["western_redness_model"])
+        if method_payload.get("fajr_fadilah_end_degrees") is not None:
+            loc.set_fajr_fadilah_end_angle(method_payload["fajr_fadilah_end_degrees"])
     except (TypeError, ValueError) as exc:
         raise ApiError(str(exc), details={"field": "method"}) from exc
 
@@ -140,7 +195,11 @@ def build_prayer_times_response(payload: dict) -> dict:
 
     out: dict = {}
     for key in ("fajr", "sunrise", "zuhr", "asr", "sunset", "maghrib", "isha", "midnight"):
-        out[key] = _format_prayer(getattr(times, key))
+        prayer = getattr(times, key)
+        out[key] = _format_prayer(prayer)
+        caution = _prayer_caution(key, prayer, times)
+        if caution:
+            out[key]["caution"] = caution
 
     method = times.method
     requested_method_name = ""
@@ -157,6 +216,9 @@ def build_prayer_times_response(payload: dict) -> dict:
     out["method"] = {
         "name": response_method_name,
         "asr_type": getattr(method, "asr_type", 0),
+        "use_isha_fadilah": method.use_isha_fadilah,
+        "western_redness_model": method.western_redness_model,
+        "fajr_fadilah_end_degrees": method.fajr_fadilah_end_degrees,
         "midnight_type": getattr(method, "midnight_type", 0),
         "fajr_angle": {"decimal": _angle_decimal(getattr(method, "fajr_angle", None))},
         "maghrib_angle": {"decimal": _angle_decimal(getattr(method, "maghrib_angle", None))},
@@ -176,13 +238,11 @@ def build_prayer_times_response(payload: dict) -> dict:
     }
     out["qibla"] = _build_qibla_data(loc)
     if method.keys[0] in ("JAFARI", "TEHRAN"):
+        windows = loc.sistani_daylight_fadilah() | loc.sistani_evening_fadilah()
+        if times.fajr.fadilah is not None:
+            windows["fajr"] = times.fajr.fadilah
         out["fadilah"] = {
-            key: {
-                "start": window.start.isoformat(timespec="seconds"),
-                "preferred_by": window.preferred_by.isoformat(timespec="seconds"),
-                "end": window.end.isoformat(timespec="seconds"),
-            }
-            for key, window in loc.sistani_daylight_fadilah().items()
+            key: window.to_dict(timespec="seconds") for key, window in windows.items()
         }
 
     out["warnings"] = []

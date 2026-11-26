@@ -22,20 +22,18 @@
   <a class="quiet-link small city-credit" href="https://www.geonames.org/" target="_blank" rel="noopener noreferrer">City data · GeoNames</a>
 {% endmacro %}
 
-{% macro method_options(custom=false) %}
-  <option value="JAFARI">Jaʿfarī (Leva Institute)</option>
-  <option value="ISNA">Islamic Society of North America (ISNA)</option>
-  <option value="MWL">Muslim World League</option>
-  <option value="MAKKAH">Umm al-Qura (Makkah)</option>
-  <option value="EGYPT">Egyptian General Authority</option>
-  <option value="KARACHI">University of Islamic Sciences (Karachi)</option>
-  <option value="TEHRAN">University of Tehran</option>
+{% macro method_options(prayer_presets, custom=false) %}
+  {% for tradition, presets in prayer_presets if presets %}
+  <optgroup label="{{ tradition }}">
+    {% for key, label, _method in presets %}<option value="{{ key }}">{{ label }}</option>{% endfor %}
+  </optgroup>
+  {% endfor %}
   {% if custom %}<option value="CUSTOM">Custom angles</option>{% endif %}
 {% endmacro %}
 
 {% macro angle_fields(prefix="") %}
   <div class="fields three-fields full-width" id="{{ prefix }}custom-angles" hidden>
-    {% for key, label, default in [('fajr', 'Fajr', 16), ('maghrib', 'Maghrib', 4), ('isha', 'ʿIshāʾ', 14)] %}
+    {% for key, label, default in [('fajr', 'Fajr', 16), ('maghrib', 'Maghrib', 4), ('isha', 'ʿIshāʾ', 'Preferred window')] %}
       <label>{{ label }} angle <input id="{{ prefix }}{{ key }}-angle" data-prayer-angle="{{ key }}_angle" type="number" min="0" max="90" step="any" placeholder="{{ default }}" disabled></label>
     {% endfor %}
   </div>

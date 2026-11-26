@@ -2,14 +2,20 @@ from __future__ import annotations
 
 import json
 
-from flask import Blueprint, Response, jsonify, request
+from flask import Blueprint, Response, jsonify, render_template, request
 from islamic_times.prayer_calendar import prayer_schedule_to_csv, prayer_schedule_to_ics
 
 from webapp.errors import ApiError
+from webapp.routes.pages import prayer_presets
 from webapp.services.calendar import build_schedule, serialize_day
 from webapp.validators import require_json_object
 
 calendar_bp = Blueprint("calendar", __name__)
+
+
+@calendar_bp.get("/calendar")
+def calendar_page():
+    return render_template("calendar.html", **prayer_presets())
 
 
 def _schedule_request() -> dict:

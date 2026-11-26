@@ -18,7 +18,7 @@
         <span>Islamic Times</span>
       </a>
       <nav class="site-nav" aria-label="Main navigation">
-        {% for endpoint, label in [('pages.index', 'Prayer Times'), ('pages.calendar_page', 'Calendar'), ('pages.visibilities_page', 'Crescent')] %}
+        {% for endpoint, label in [('pages.index', 'Prayer Times'), ('pages.visibilities_page', 'Crescent')] %}
           <a href="{{ url_for(endpoint) }}" {% if request.endpoint == endpoint %}aria-current="page"{% endif %}>{{ label }}</a>
         {% endfor %}
       </nav>
@@ -58,6 +58,7 @@
         <select id="preference-clock"><option value="24">24-hour</option><option value="12">12-hour</option></select>
       </label>
     </div>
+    {% block display_settings %}{% endblock %}
     <div class="privacy-box">
       <label class="checkbox-label"><input type="checkbox" id="preferences-enabled"> Remember settings</label>
       <p class="muted small">Saved in this browser.</p>

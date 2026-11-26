@@ -2,38 +2,237 @@
 {% block title %}Methodology · Islamic Times{% endblock %}
 
 {% block content %}
-<article class="methodology">
-  <header class="page-heading"><h1>Methodology</h1></header>
-  <section aria-labelledby="calculation-heading">
-    <h2 id="calculation-heading">How the timetable is calculated</h2>
-    <p>Prayer times use the Sun’s position for the selected place and date. Presets specify twilight angles for Fajr, Maghrib, or ʿIshāʾ, or a fixed interval where the method calls for one. Settings offers custom angles and a midnight convention. The timetable flags high-latitude estimates when a solar event is unavailable. <a class="quiet-link" href="https://praytimes.org/docs/calculation">PrayTimes calculation guide</a></p>
-    <p>The site’s Jaʿfarī preset uses the Leva parameters, including 16° for Fajr. The Najaf office publishes Fajr times based on 18°. <a class="quiet-link" href="https://imam-us.org/know-your-prayer-times">I.M.A.M. guidance on Fajr</a></p>
-  </section>
+<header class="page-heading methodology-heading">
+  <h1>Methodology</h1>
+  <p>How we turn the Sun’s position and prayer rules into a local timetable.</p>
+</header>
+<div class="methodology-layout">
+  <nav class="methodology-nav" aria-label="On this page">
+    <p>On this page</p>
+    <ul>
+      <li><a href="#sun">Reading the Sun</a></li>
+      <li><a href="#prayers">The five prayers</a></li>
+      <li><a href="#presets">Calculation presets</a></li>
+      <li><a href="#asr"><i>ʿAṣr</i> and shadow length</a></li>
+      <li><a href="#fadilah"><i>Faḍīlah</i></a></li>
+      <li><a href="#estimates">High latitudes</a></li>
+      <li><a href="#clock">Dates and the local clock</a></li>
+    </ul>
+  </nav>
 
-  <section aria-labelledby="asr-heading">
-    <h2 id="asr-heading">ʿAṣr conventions</h2>
-    <h3>Jaʿfarī and Tehran</h3>
-    <p>On Prayer Times, these presets and Jaʿfarī-based custom angles show Sayyid Sistani’s preferred ʿAṣr window. Under his ruling, you may pray ʿAṣr as soon as you finish Ẓuhr. <a class="quiet-link" href="https://www.sistani.org/english/book/48/2209/">Sayyid Sistani · ruling 717</a></p>
-    <h3>Standard</h3>
-    <p>ʿAṣr starts when an upright object’s shadow grows by one object height beyond its noon length. This is the Mālikī, Shāfiʿī, and Ḥanbalī rule, also held by some Ḥanafī jurists. <a class="quiet-link" href="https://islamweb.net/ar/fatwa/print.php?id=117832">One-shadow ruling</a> · <a class="quiet-link" href="https://sunnah.com/tirmidhi:149">Tirmidhī 149</a></p>
-    <h3>Ḥanafī</h3>
-    <p>The option follows Abū Ḥanīfa’s well-known ruling. ʿAṣr starts when the shadow grows by twice the object’s height beyond its noon length. <a class="quiet-link" href="https://parallelquran.com/fiqh/al-hidaya/9/">Al-Marghīnānī · al-Hidāyah, Prayer Times</a></p>
-    <p>With Method default, a Jaʿfarī or Tehran calendar schedules ʿAṣr at the opening of the preferred window. Prayer Calendar applies any selected convention and mosque offsets to the timetable and downloads.</p>
-  </section>
+  <article class="methodology">
+    <section id="sun" aria-labelledby="sun-heading">
+      <h2 id="sun-heading">Reading the Sun</h2>
+      <dl class="methodology-glossary">
+        <div>
+          <dt>Altitude and depression</dt>
+          <dd>Altitude measures the angle from the observer’s horizontal line of sight to the Sun’s centre. It is positive above the horizon and negative below it. Depression is the size of the angle below the horizon.</dd>
+        </div>
+        <div>
+          <dt>Sunrise and sunset</dt>
+          <dd>The upper edge of the Sun appears at the horizon when its centre is about 0.83° below it. That standard angle allows for the Sun’s apparent radius and typical atmospheric refraction. Terrain and local weather can shift the visible event.</dd>
+        </div>
+        <div>
+          <dt>Solar transit and legal noon</dt>
+          <dd>The Sun crosses the local meridian at solar transit, which supplies the main <i>Ẓuhr</i> entry. The <i>faḍīlah</i> calculation takes legal noon as the midpoint between sunrise and sunset. These times usually fall close together.</dd>
+        </div>
+      </dl>
+      <p class="methodology-sources"><a href="https://aa.usno.navy.mil/faq/RST_defs">U.S. Naval Observatory · rise, set and transit</a></p>
+      <figure class="sun-figure">
+        <ol class="sun-snapshots" role="list">
+          <li>
+            <svg viewBox="0 0 150 104" aria-hidden="true">
+              <path class="sun-ground" d="M8 60H142V104H8z"></path>
+              <path class="sun-horizon" d="M8 60H142"></path>
+              <path class="sun-sightline" d="M20 60L120 88.7"></path>
+              <path class="sun-angle" d="M75 60A55 55 0 0 1 72.9 75.2"></path>
+              <circle class="sun-observer" cx="20" cy="60" r="3"></circle>
+              <circle class="sun-disc below-horizon" cx="120" cy="88.7" r="8"></circle>
+            </svg>
+            <strong>Before sunrise</strong>
+            <span>16° depression</span>
+          </li>
+          <li>
+            <svg viewBox="0 0 150 104" aria-hidden="true">
+              <path class="sun-ground" d="M8 60H142V104H8z"></path>
+              <circle class="sun-disc" cx="75" cy="73" r="13"></circle>
+              <path class="sun-horizon" d="M8 60H142"></path>
+              <path class="sun-motion" d="M104 70V44m-4 4 4-4 4 4"></path>
+            </svg>
+            <strong>Sunrise</strong>
+            <span>Eastern horizon</span>
+          </li>
+          <li>
+            <svg viewBox="0 0 150 104" aria-hidden="true">
+              <path class="sun-ground" d="M8 60H142V104H8z"></path>
+              <path class="sun-horizon" d="M8 60H142"></path>
+              <path class="sun-horizon" d="M75 22V60" stroke-dasharray="2 3"></path>
+              <path class="sun-motion" d="M15 60C32 35 52 14 75 14S118 35 135 60"></path>
+              <circle class="sun-disc" cx="75" cy="14" r="8"></circle>
+            </svg>
+            <strong>Solar transit</strong>
+            <span>Peak altitude</span>
+          </li>
+          <li>
+            <svg viewBox="0 0 150 104" aria-hidden="true">
+              <path class="sun-ground" d="M8 60H142V104H8z"></path>
+              <circle class="sun-disc" cx="75" cy="73" r="13"></circle>
+              <path class="sun-horizon" d="M8 60H142"></path>
+              <path class="sun-motion" d="M104 44V70m-4-4 4 4 4-4"></path>
+            </svg>
+            <strong>Sunset</strong>
+            <span>Western horizon</span>
+          </li>
+        </ol>
+      </figure>
+    </section>
 
-  <section id="fadilah" aria-labelledby="fadilah-heading">
-    <h2 id="fadilah-heading">Faḍīlah</h2>
-    <p>Faḍīlah is the preferred window within the time a prayer may be offered. The table shows Sayyid Sistani’s ordinary daylight rules. Each fraction refers to the growth of an upright object’s shadow beyond its noon length, measured against the object’s height.</p>
-    <div class="table-scroll" tabindex="0" role="region" aria-label="Preferred daytime prayer windows">
-      <table class="methodology-table">
-        <thead><tr><th scope="col">Prayer</th><th scope="col">Window</th><th scope="col">Aim to pray by</th></tr></thead>
-        <tbody>
-          <tr><th scope="row">Ẓuhr</th><td>Legal noon to 4/7</td><td>2/7</td></tr>
-          <tr><th scope="row">ʿAṣr</th><td>2/7 to 6/7</td><td>4/7</td></tr>
-        </tbody>
-      </table>
-    </div>
-    <p>The window estimates use local sunrise and sunset. In intense heat, Sistani gives different guidance. <a class="quiet-link" href="https://www.sistani.org/persian/book/26575/6319/">Legal noon · ruling 953</a> · <a class="quiet-link" href="https://www.sistani.org/persian/book/26575/6324/">Preferred windows · rulings 966–967</a></p>
-  </section>
-</article>
+    <section id="prayers" aria-labelledby="prayers-heading">
+      <h2 id="prayers-heading">The five prayers</h2>
+      <dl class="methodology-glossary">
+        <div>
+          <dt><i>Fajr</i></dt>
+          <dd>True dawn is the light spreading across the eastern horizon. The timetable estimates its onset from the Sun’s morning depression angle. The morning prayer period ends at sunrise.</dd>
+        </div>
+        <div>
+          <dt><i>Ẓuhr</i></dt>
+          <dd>The main timetable uses solar transit as the midday marker. The selected convention determines how the afternoon is shown.</dd>
+        </div>
+        <div>
+          <dt><i>ʿAṣr</i></dt>
+          <dd>Standard and <i>Ḥanafī</i> methods use afternoon shadow length. The <i>Shia</i> presets show the <i>faḍīlah</i> window within the shared afternoon period.</dd>
+        </div>
+        <div>
+          <dt><i>Maghrib</i></dt>
+          <dd><i>Sunni</i> presets use calculated sunset or add one minute, as shown in the table below. The <i>Shia</i> presets use a depression angle to estimate when the eastern redness passes overhead.</dd>
+        </div>
+        <div>
+          <dt><i>ʿIshāʾ</i></dt>
+          <dd>Most presets use an evening depression angle to estimate when twilight fades. <i>Umm al-Qura</i> adds a fixed interval to <i>Maghrib</i>. In the shared <i>Shia</i> evening period, <i>ʿIshāʾ</i> may be offered after <i>Maghrib</i>.</dd>
+        </div>
+      </dl>
+      <p class="methodology-sources"><a href="https://praytimes.org/docs/calculation">PrayTimes · prayer time calculations</a></p>
+    </section>
+
+    <section id="presets" aria-labelledby="presets-heading">
+      <h2 id="presets-heading">Calculation presets</h2>
+      <p>A preset supplies twilight thresholds and default conventions. The angles are measured below the horizon. Islamic midnight is halfway between sunset and the next morning event listed here.</p>
+      <div class="table-scroll" tabindex="0" role="region" aria-label="Prayer calculation presets">
+        <table class="methodology-table preset-table">
+          <thead><tr><th scope="col">Preset</th><th scope="col">Tradition</th><th scope="col"><i>Fajr</i></th><th scope="col"><i>Maghrib</i></th><th scope="col"><i>ʿIshāʾ</i></th><th scope="col">Midnight uses</th></tr></thead>
+          {% for tradition, presets in prayer_presets if presets %}
+          <tbody>
+            {% for key, label, method in presets %}
+            {% set maghrib_minutes = method.maghrib_offset_minutes|default(none) %}
+            <tr>
+              <th scope="row">
+                {% if key in ('JAFARI', 'MAKKAH') %}
+                  {% set name, separator, qualifier = label.partition(' (') %}
+                  <i>{{ name }}</i>{{ separator }}{{ qualifier }}
+                {% elif key == 'FRANCE' %}
+                  <i>{{ label }}</i>
+                {% else %}
+                  {{ label }}
+                {% endif %}
+                {% if key == default_method %} <span class="method-default">Default</span>{% endif %}
+              </th>
+              <td><i>{{ tradition }}</i></td>
+              <td>{{ '%g'|format(method.fajr_angle.decimal) }}°</td>
+              <td>
+                {% if method.maghrib_angle.decimal %}{{ '%g'|format(method.maghrib_angle.decimal) }}°
+                {% elif maghrib_minutes is none %}Sunset + 1 min
+                {% else %}Sunset{% if maghrib_minutes %} + {{ maghrib_minutes }} min{% endif %}
+                {% endif %}
+              </td>
+              <td>
+                {% if method.use_isha_fadilah %}<a href="#fadilah">Preferred window</a>
+                {% elif method.isha_offset_minutes is none %}{{ '%g'|format(method.isha_angle.decimal) }}°
+                {% else %}{{ method.isha_offset_minutes }} min after <i>Maghrib</i>{% if method.ramadan_isha_offset_minutes %}<br>{{ method.ramadan_isha_offset_minutes }} min in <i>Ramaḍān</i>{% endif %}
+                {% endif %}
+              </td>
+              <td>Next {% if method.midnight_type %}<i>Fajr</i>{% else %}sunrise{% endif %}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+          {% endfor %}
+        </table>
+      </div>
+      <p class="methodology-sources"><a href="https://praytimes.org/docs/methods">PrayTimes</a> <a href="https://aladhan.com/calculation-methods">AlAdhan</a> <a href="https://fiqhcouncil.org/the-suggested-calculation-method-for-fajr-and-isha/">FCNA</a> <a href="https://github.com/batoulapps/adhan-js/blob/d2993d56fac7d8a06abba4837347bd3fc9cbd188/src/CalculationMethod.ts#L59-L67">Adhan · Kuwait and Qatar</a></p>
+    </section>
+
+    <section id="asr" aria-labelledby="asr-heading">
+      <h2 id="asr-heading"><i>ʿAṣr</i> and shadow length</h2>
+      <p>As the Sun descends, the shadow of an upright object lengthens. To measure the growth, subtract the length the shadow already had at noon. The library converts each target shadow length to a solar altitude and computes when the Sun reaches it.</p>
+      <figure class="shadow-figure">
+        <figcaption><strong>Example</strong> · A 1 m post casts a 0.4 m shadow at noon.</figcaption>
+        <dl class="shadow-chart">
+          <div><dt>Noon</dt><dd><span class="shadow-bar" aria-hidden="true"></span><span>0.4 m</span></dd></div>
+          <div><dt>Standard</dt><dd><span class="shadow-bar standard" aria-hidden="true"></span><span>1.4 m</span></dd></div>
+          <div><dt><i>Ḥanafī</i></dt><dd><span class="shadow-bar hanafi" aria-hidden="true"></span><span>2.4 m</span></dd></div>
+        </dl>
+        <p class="shadow-key"><span>Noon shadow</span><span>Growth after noon</span></p>
+      </figure>
+      <dl class="methodology-glossary">
+        <div>
+          <dt>Standard · one object height</dt>
+          <dd>The usual <i>Mālikī</i>, <i>Shāfiʿī</i> and <i>Ḥanbalī</i> threshold, also held by Abū Yūsuf and Muḥammad al-Shaybānī.</dd>
+        </div>
+        <div>
+          <dt><i>Ḥanafī</i> · two object heights</dt>
+          <dd>The threshold attributed to Abū Ḥanīfa in <cite>al-Hidāyah</cite>.</dd>
+        </div>
+        <div>
+          <dt><i>Jaʿfarī</i> · after <i>Ẓuhr</i></dt>
+          <dd>The shadow fractions below define <a class="quiet-link" href="#fadilah"><i>faḍīlah</i></a> for <i>ʿAṣr</i>.</dd>
+        </div>
+      </dl>
+    </section>
+
+    <section id="fadilah" aria-labelledby="fadilah-heading">
+      <h2 id="fadilah-heading"><i>Faḍīlah</i></h2>
+      <p>For the <i>Shia</i> methods, the timetable shows <i>faḍīlah</i>, the preferred time within a prayer’s valid period. The <i>Ẓuhr</i> and <i>ʿAṣr</i> windows follow Sayyid Sistani’s rulings for ordinary conditions. Each fraction measures shadow growth beyond its legal-noon length, as a share of the object’s height.</p>
+      <div class="table-scroll" tabindex="0" role="region" aria-label="Preferred daytime prayer windows">
+        <table class="methodology-table">
+          <thead><tr><th scope="col">Prayer</th><th scope="col">Preferred window</th><th scope="col">Aim to pray by</th></tr></thead>
+          <tbody>
+            <tr><th scope="row"><i>Ẓuhr</i></th><td>Legal noon to 4/7</td><td>2/7</td></tr>
+            <tr><th scope="row"><i>ʿAṣr</i></th><td>2/7 to 6/7</td><td>4/7</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>The library checks the afternoon Sun’s geometric altitude to find each shadow threshold. It needs local sunrise and sunset to estimate the window. Sistani gives separate guidance for intense heat.</p>
+      <p class="methodology-sources"><a href="https://www.sistani.org/persian/book/26575/6319/">Legal noon · ruling 953</a> <a href="https://www.sistani.org/persian/book/26575/6324/"><i>Ẓuhr</i> and <i>ʿAṣr</i> · rulings 966–967</a></p>
+      <h3>Dawn</h3>
+      <p><i>Fajr</i>’s preferred time opens at true dawn and ends when dawn light reaches the whole horizon, apparently before redness appears in the east. Sunrise closes the valid prayer period.</p>
+      <p>The shaded estimate ends at civil dawn, when the Sun reaches 6° below the horizon. This is a rough proxy for the whole horizon brightening. Changing the <i>Fajr</i> angle moves only the opening. A locally measured angle in Settings can replace the closing estimate.</p>
+      <p class="methodology-sources"><a href="https://www.sistani.org/persian/book/26575/6323/"><i>Fajr</i> · ruling 965</a> <a href="https://aa.usno.navy.mil/faq/RST_defs">U.S. Naval Observatory · civil twilight</a></p>
+      <h3>Evening twilight</h3>
+      <p>For a non-traveller, western redness disappearing marks the end of <i>Maghrib</i>’s preferred time and the start of <i>ʿIshāʾ</i>’s. The latter ends one-third of the way from sunset to the next dawn. For travellers, <i>Maghrib</i>’s preferred time extends through the first quarter of the night.</p>
+      <p>The ≈ marks an estimate. The default uses latitude and season, up to 55° north or south. Across four held-out sites, its mean absolute error was 8 minutes, compared with 14 minutes for a fixed 14° crossing, weighting each site equally. The fixed angle was closer in Tucson and near Ankara.</p>
+      <details><summary>Experimental estimates</summary><p>In Settings, the blend moves 37% from the seasonal time toward the 14° crossing. It uses the seasonal time when the crossing is absent. Solar descent uses the Sun’s drop in the first half-hour after sunset.</p></details>
+      <p>For <i>Shia</i> presets, the <i>ʿIshāʾ</i> entry shows this preferred window when available. An explicit custom <i>ʿIshāʾ</i> angle shows its calculated time alongside the estimate.</p>
+      <p class="methodology-sources"><a href="https://www.sistani.org/persian/book/26575/6325/"><i>Maghrib</i> · ruling 968</a> <a href="https://www.sistani.org/persian/book/26575/6326/"><i>ʿIshāʾ</i> · ruling 969</a> <a href="https://github.com/batoulapps/adhan-js/blob/d2993d56fac7d8a06abba4837347bd3fc9cbd188/src/Astronomical.ts#L453-L496">Adhan · red-twilight formula</a> <a href="https://birka.nur.nu/prayertimes/prayertimes-references/quoted/omar-afzal_Fajr%20Isha%20Observations.doc">US field logs</a> <a href="https://isamveri.org/pdfdrg/D184688/2013/2012_OZDEMIRS.pdf#page=19">Ankara field tables</a></p>
+    </section>
+
+    <section id="estimates" aria-labelledby="estimates-heading">
+      <h2 id="estimates-heading">High latitudes</h2>
+      <p>When a required event is missing at high latitude, the site can substitute an estimate. At polar latitudes the library can use sunrise and sunset from a reference latitude. Twilight estimates count back from sunrise for <i>Fajr</i> or forward from sunset for <i>Maghrib</i> and <i>ʿIshāʾ</i>. The angle-based rule uses the twilight angle divided by 60 as the fraction of the night. Kuwait and Qatar use a half-night rule. Fixed-interval <i>ʿIshāʾ</i> follows the adjusted <i>Maghrib</i>.</p>
+      <p>The timetable flags affected dates and uses a dash for unavailable times. <i>Faḍīlah</i> windows require the underlying local solar events, so a preferred range may be absent even when estimated prayer times are available.</p>
+      <p class="methodology-sources"><a href="https://praytimes.org/docs/calculation">PrayTimes · higher-latitude methods</a> <a href="https://github.com/hassantahan/islamic_times">Islamic Times · calculation source</a></p>
+    </section>
+
+    <section id="clock" aria-labelledby="clock-heading">
+      <h2 id="clock-heading">Dates and the local clock</h2>
+      <h3>Location and daylight saving</h3>
+      <p>The selected coordinates determine the Sun’s path and the IANA time zone. The timetable uses the date, clock and UTC offset at that location, including daylight saving where applicable. A next-day marker means the event falls after civil midnight.</p>
+      <p class="methodology-sources"><a href="https://www.iana.org/time-zones">IANA · time zone database</a></p>
+      <h3>Islamic midnight</h3>
+      <p>The library takes the elapsed midpoint from sunset to the following <i>Fajr</i> or sunrise, as specified by the preset or midnight setting. With a sunset at 18:00 and <i>Fajr</i> at 05:00, it falls at 23:30 if the clock offset stays constant. On a clock-change night the midpoint is calculated on the UTC timeline and then converted back to local time.</p>
+      <h3>Status on Prayer Times</h3>
+      <p>With the <i>Shia</i> preset defaults, the live display highlights both prayers during the shared afternoon and evening periods. The timeline uses a deeper shade where the afternoon <i>faḍīlah</i> windows overlap. The display shows “Between prayers” during breaks in the timetable.</p>
+      <h3><i>Hijri</i> dates</h3>
+      <p>The displayed <i>Hijri</i> date is calculated and may differ from local crescent observance.</p>
+    </section>
+  </article>
+</div>
 {% endblock %}

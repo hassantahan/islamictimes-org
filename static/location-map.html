@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <title>Approximate location</title>
+  <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+  <style>
+    html, body, #map { height: 100%; margin: 0; }
+    .leaflet-container { background: #f1ebdb; }
+    .leaflet-container .leaflet-control-attribution {
+      padding: 0 .4rem;
+      border-top-left-radius: .25rem;
+      background: #faf6ea;
+      color: #32463b;
+      font: .75rem/1.5 system-ui, sans-serif;
+    }
+    .leaflet-container .leaflet-control-attribution a {
+      color: inherit;
+      text-decoration: underline;
+    }
+    .leaflet-marker-icon { filter: hue-rotate(245deg); }
+  </style>
+  <script src="vendor/leaflet/leaflet.js" defer></script>
+  <script src="js/location-map.js" defer></script>
+</head>
+<body>
+  <main id="map" aria-label="Map of the approximate prayer location and Qibla direction"></main>
+</body>
+</html>

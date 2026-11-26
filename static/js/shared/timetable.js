@@ -46,6 +46,74 @@ export function formatTime(iso) {
   return (number % 12 || 12) + ":" + minute + (number < 12 ? " AM" : " PM");
 }
 
+export function formatRange({ start, end }) {
+  const first = formatTime(start);
+  const last = formatTime(end);
+  const suffix = last.match(/ (AM|PM)$/)?.[0];
+  return (suffix && first.endsWith(suffix) ? first.slice(0, -suffix.length) : first) + "–" + last;
+}
+
+export function setupTimetableNote(button, note, { center = false, keepClear } = {}) {
+  let hideTimer;
+  let pinned = false;
+  const isOpen = () => note.matches(":popover-open");
+  const keepOpen = () => clearTimeout(hideTimer);
+  const show = () => {
+    keepOpen();
+    if (!isOpen()) note.showPopover({ source: button });
+  };
+  const hideOnLeave = () => {
+    keepOpen();
+    if (!pinned && !button.matches(":focus-visible")) hideTimer = setTimeout(() => note.hidePopover(), 200);
+  };
+  button.addEventListener("pointerenter", (event) => {
+    if (event.pointerType === "mouse") show();
+  });
+  button.addEventListener("pointerleave", hideOnLeave);
+  button.addEventListener("focus", () => {
+    if (button.matches(":focus-visible")) show();
+  });
+  button.addEventListener("blur", hideOnLeave);
+  note.addEventListener("pointerenter", keepOpen);
+  note.addEventListener("pointerleave", hideOnLeave);
+  button.addEventListener("click", (event) => {
+    event.preventDefault();
+    pinned = !pinned;
+    if (pinned) show();
+    else note.hidePopover();
+  });
+  note.addEventListener("toggle", () => {
+    button.setAttribute("aria-expanded", String(isOpen()));
+    if (!isOpen()) pinned = false;
+  });
+  note.addEventListener("beforetoggle", (event) => {
+    if (event.newState !== "open") return;
+    const rect = button.getBoundingClientRect();
+    const rem = parseFloat(getComputedStyle(document.documentElement).fontSize);
+    const edge = .75 * rem;
+    const width = Math.min(note.classList.contains("gauge-note") ? 14 * rem : 17.5 * rem, innerWidth - 2 * edge);
+    const left = center ? (rect.left + rect.right - width) / 2 : rect.right - width;
+    note.style.left = Math.max(edge, Math.min(left, innerWidth - width - edge)) + "px";
+    const clear = keepClear && !keepClear.hidden ? keepClear.getBoundingClientRect() : rect;
+    const top = Math.min(rect.top, clear.top);
+    const bottom = Math.max(rect.bottom, clear.bottom);
+    const below = innerHeight - bottom;
+    const placeBelow = below >= 12 * rem || below >= top;
+    note.style.maxHeight = Math.max(0, (placeBelow ? below : top) - 8 - edge) + "px";
+    note.style.insetBlock = placeBelow
+      ? (bottom + 8) + "px auto"
+      : "auto " + (innerHeight - top + 8) + "px";
+  });
+}
+
+export function nextDayMarker() {
+  const marker = document.createElement("sup");
+  marker.className = "next-day";
+  marker.textContent = "+1";
+  marker.title = "Next day";
+  return marker;
+}
+
 export function setupCustomAngles(method, group) {
   const inputs = [...group.querySelectorAll("[data-prayer-angle]")];
 

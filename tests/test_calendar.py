@@ -5,17 +5,29 @@ import re
 import unittest
 
 from app import app
+from webapp import create_app
+from webapp.routes.calendar import calendar_bp
 
 
 class CalendarTests(unittest.TestCase):
     def setUp(self):
-        self.client = app.test_client()
+        calendar_app = create_app()
+        calendar_app.register_blueprint(calendar_bp)
+        self.client = calendar_app.test_client()
         self.settings = {
             "lat": 43.65, "lon": -79.38,
             "start": "2026-03-07", "end": "2026-03-09",
             "method": "ISNA", "asr_type": 1,
             "profile": {"name": "Neighbourhood mosque", "offset_minutes": {"fajr": -90, "isha": 120}},
         }
+
+    def test_public_app_does_not_expose_calendar(self):
+        public_client = app.test_client()
+        self.assertEqual(public_client.get("/calendar").status_code, 404)
+        for path in ("/calendar/schedule", "/calendar/export/ics", "/calendar/export/csv"):
+            with self.subTest(path=path):
+                self.assertEqual(public_client.post(path, json=self.settings).status_code, 404)
+        self.assertNotIn('href="/calendar"', public_client.get("/").get_data(as_text=True))
 
     def test_pages_render_without_cookies_or_external_application_scripts(self):
         pages = (

@@ -115,18 +115,22 @@ export function setupLocation(form, defaultCity = "") {
     setActive(-1);
   }
 
-  function choose(place) {
+  function setLocation(place) {
     locationGeneration += 1;
-    selected = place;
-    custom = false;
-    fromDevice = false;
-    input.value = place.label;
-    lat.value = "";
-    lon.value = "";
-    details.open = false;
+    selected = place.city ? place : undefined;
+    custom = !selected;
+    fromDevice = custom && place.label === "Device location";
+    input.value = selected?.label ?? "";
+    lat.value = custom ? place.lat : "";
+    lon.value = custom ? place.lon : "";
+    details.open = custom;
     searchStatus.textContent = "";
     status.textContent = "";
     closeResults();
+  }
+
+  function choose(place) {
+    setLocation(place);
     form.dispatchEvent(new CustomEvent("locationchange", { detail: { coordinates: false } }));
   }
 
@@ -233,6 +237,7 @@ export function setupLocation(form, defaultCity = "") {
   });
 
   return {
+    setLocation,
     read() {
       if (input.value && selected && input.value === selected.label) return selected;
       if (input.value.trim()) throw new Error("Choose a city from the search results.");

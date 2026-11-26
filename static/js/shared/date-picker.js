@@ -1,4 +1,5 @@
 import { apiResponse, civilDate, shiftDate } from "./timetable.js";
+import { onBackdropClick } from "./dialog.js";
 
 const FIRST_DATE = "1900-01-01";
 const LAST_DATE = "2100-12-31";
@@ -25,6 +26,7 @@ export function setupDatePicker(selectDate) {
   let month;
   let year;
   let request;
+  let applying = false;
 
   for (let index = 0; index < 7; index += 1) {
     const date = shiftDate(FIRST_MONDAY, index);
@@ -102,18 +104,23 @@ export function setupDatePicker(selectDate) {
       .then((response) => response.json())
       .then((dates) => {
         if (monthRequest.signal.aborted) return;
-        const months = new Set();
+        const months = new Map();
         dates.forEach(({ day, month_name: name, year: hijriYear }, index) => {
           const button = buttons[index];
           button.lastElementChild.textContent = day;
           button.setAttribute("aria-label", button.getAttribute("aria-label") + ", " + day + " " + name + " " + hijriYear + " AH");
-          months.add(name + " " + hijriYear + " AH");
+          months.set(name, hijriYear);
         });
-        hijriMonths.textContent = [...months].join(" / ");
-        status.textContent = "";
+        for (const [name, hijriYear] of months) {
+          if (hijriMonths.hasChildNodes()) hijriMonths.append(" / ");
+          const label = document.createElement("i");
+          label.textContent = name;
+          hijriMonths.append(label, " " + hijriYear + " AH");
+        }
+        if (status.textContent === "Loading Hijri dates…") status.textContent = "";
       })
       .catch(() => {
-        if (!monthRequest.signal.aborted) status.textContent = "Hijri dates unavailable.";
+        if (!monthRequest.signal.aborted && status.textContent === "Loading Hijri dates…") status.textContent = "Hijri dates unavailable.";
       });
   }
 
@@ -133,11 +140,12 @@ export function setupDatePicker(selectDate) {
   previous.addEventListener("click", () => browse(-1));
   next.addEventListener("click", () => browse(1));
   function jumpToYear() {
-    if (!yearField.value || !yearField.reportValidity()) {
-      yearField.value = year;
-      return;
+    if (!yearField.value || !yearField.validity.valid) {
+      status.textContent = "Enter a year from 1900 to 2100.";
+      return false;
     }
     if (yearField.valueAsNumber !== year) showMonth(monthDate(yearField.valueAsNumber, month));
+    return true;
   }
 
   yearField.addEventListener("change", jumpToYear);
@@ -148,10 +156,18 @@ export function setupDatePicker(selectDate) {
     }
   });
   byId("date-today").addEventListener("click", () => stageDate(today));
-  apply.addEventListener("click", () => {
-    dialog.close();
-    selectDate(draft);
-  });
+  async function applyDate() {
+    if (applying || !jumpToYear()) return;
+    const date = draft;
+    applying = true;
+    try {
+      if (await selectDate(date, dialog, status) && dialog.open && draft === date) dialog.close();
+    } finally {
+      applying = false;
+    }
+  }
+  apply.addEventListener("click", applyDate);
+  onBackdropClick(dialog, applyDate);
   dialog.addEventListener("close", () => request?.abort());
   days.addEventListener("click", (event) => {
     const button = event.target.closest("[data-date]");

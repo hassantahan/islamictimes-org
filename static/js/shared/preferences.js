@@ -1,5 +1,7 @@
+import { onBackdropClick } from "./dialog.js";
+
 const STORAGE_KEY = "islamic-times.preferences.v1";
-const DEFAULTS = { theme: "traditional", clock: "24", city: "", daily: null, calendar: null, profiles: [] };
+const DEFAULTS = { theme: "traditional", clock: "24", showTimeline: true, city: "", daily: null, calendar: null, profiles: [] };
 
 function readSaved() {
   try {
@@ -14,6 +16,7 @@ function normalize(values) {
   return {
     theme: ["traditional", "system", "light", "dark"].includes(values.theme) ? values.theme : DEFAULTS.theme,
     clock: values.clock === "12" ? "12" : "24",
+    showTimeline: typeof values.showTimeline === "boolean" ? values.showTimeline : DEFAULTS.showTimeline,
     city: typeof values.city === "string" || (values.city && typeof values.city === "object") ? values.city : "",
     daily: values.daily ?? null,
     calendar: values.calendar ?? null,
@@ -61,18 +64,27 @@ export function updatePreferences(changes) {
 const dialog = document.getElementById("preferences");
 const theme = document.getElementById("preference-theme");
 const clock = document.getElementById("preference-clock");
+const timeline = document.getElementById("preference-timeline");
 const remember = document.getElementById("preferences-enabled");
 const status = document.getElementById("preference-status");
 const clear = document.getElementById("clear-preferences");
+let storageError = false;
+let applySettings = () => true;
+
+export function onSettingsApply(apply) {
+  applySettings = apply;
+}
 
 function render() {
   theme.value = preferences.theme;
   clock.value = preferences.clock;
+  if (timeline) timeline.checked = preferences.showTimeline;
   remember.checked = enabled;
   clear.hidden = !enabled;
 }
 
 function reportStorageError() {
+  storageError = true;
   status.textContent = "Browser storage unavailable.";
 }
 
@@ -85,6 +97,7 @@ function stopSaving(reset) {
     return;
   }
   enabled = false;
+  storageError = false;
   if (reset) preferences = normalize(DEFAULTS);
   status.textContent = "Saved settings cleared.";
   announceChange(reset ? Object.keys(DEFAULTS) : []);
@@ -95,9 +108,13 @@ function stopSaving(reset) {
 try { localStorage.removeItem("theme"); } catch { /* Storage is unavailable. */ }
 
 document.getElementById("open-preferences").addEventListener("click", () => dialog.showModal());
+onBackdropClick(dialog, async () => {
+  if (!storageError && await applySettings() && !storageError && dialog.open) dialog.close();
+});
 document.addEventListener("preferenceschange", render);
 theme.addEventListener("change", () => updatePreferences({ theme: theme.value }));
 clock.addEventListener("change", () => updatePreferences({ clock: clock.value }));
+timeline?.addEventListener("change", () => updatePreferences({ showTimeline: timeline.checked }));
 remember.addEventListener("change", () => {
   if (!remember.checked) {
     stopSaving(false);
@@ -106,6 +123,7 @@ remember.addEventListener("change", () => {
   try {
     writeSaved(preferences);
     enabled = true;
+    storageError = false;
     status.textContent = "";
   } catch {
     reportStorageError();
@@ -120,6 +138,7 @@ window.addEventListener("storage", (event) => {
   enabled = latest !== null;
   const previous = preferences;
   preferences = normalize(latest ?? DEFAULTS);
+  storageError = false;
   status.textContent = "";
   const changed = Object.keys(DEFAULTS).filter((key) => JSON.stringify(previous[key]) !== JSON.stringify(preferences[key]));
   announceChange(changed);
